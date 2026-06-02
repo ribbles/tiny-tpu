@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TinyTPU WASM Spike — Counter</title>
+  <style>
+    body { font-family: monospace; padding: 2rem; background: #0d1117; color: #c9d1d9; }
+    h1   { color: #58a6ff; }
+    pre  { background: #161b22; padding: 1rem; border-radius: 6px; font-size: 1.1rem; }
+    .ok  { color: #3fb950; }
+    .err { color: #f85149; }
+  </style>
+</head>
+<body>
+  <h1>TinyTPU WASM Counter Spike</h1>
+  <p>Running real Verilog RTL in the browser via Verilator → Emscripten → WASM.</p>
+  <pre id="output">Loading WASM...</pre>
+
+  <script type="module">
+    const out = document.getElementById('output');
+
+    try {
+      const { default: createTinyTpuSpike } = await import('./counter.mjs');
+      const Module = await createTinyTpuSpike();
+
+      const sim = new Module.CounterSim();
+      sim.reset();
+
+      const results = [];
+      for (let i = 0; i < 5; i++) {
+        sim.step();
+        const count = sim.getCount();
+        console.log(count);
+        results.push(count);
+      }
+      sim.delete();
+
+      const expected = [1, 2, 3, 4, 5];
+      const pass = results.every((v, i) => v === expected[i]);
+
+      out.className = pass ? 'ok' : 'err';
+      out.textContent = pass
+        ? `PASS — counter output: ${results.join(' ')} ✓`
+        : `FAIL — got: ${results.join(' ')}, expected: ${expected.join(' ')}`;
+    } catch (e) {
+      out.className = 'err';
+      out.textContent = `ERROR: ${e.message}`;
+      console.error(e);
+    }
+  </script>
+</body>
+</html>
