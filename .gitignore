@@ -19,8 +19,9 @@ sim/sim_build/
 # Python virtual environment
 .venv/
 
-# WASM build intermediates
+# WASM build intermediates (obj_dir/ rule above covers Verilator output)
 wasm/build/
+wasm/**/*.mjs
 
 # Compiled object files
 *.o
@@ -33,7 +34,7 @@ wasm/build/
 .DS_Store
 *.swp
 
-# Agents 
+# Agents
 .agents/
 .claude/
 TINYTPU_ROADMAP.md
