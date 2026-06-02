@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Frontend build outputs
+web/dist/
+web/.astro/
+
+# Verilator object directory
+obj_dir/
+
+# cocotb simulation artifacts
+sim/__pycache__/
+sim/sim_build/
+
+# Simulation waveform dumps
+*.vcd
+*.fst
+
+# Python virtual environment
+.venv/
+
+# WASM build intermediates
+wasm/build/
+
+# Compiled object files
+*.o
+
+# WASM artifacts (generated) — but keep the shipped artifact
+*.wasm
+!web/public/tiny_tpu.wasm
+
+# OS / editor cruft
+.DS_Store
+*.swp
+
+# Agents 
+.agents/
+.claude/
+TINYTPU_ROADMAP.md
+CONTEXT.md
