@@ -1,51 +1,51 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-import ButtonTest from "@/components/ButtonTest";
 import "@/styles/global.css";
 ---
 
 <Layout title="TinyTPU — A TPU You Can Watch Run">
-  <main class="min-h-screen flex flex-col items-center justify-center gap-8 px-6">
-    <header class="text-center space-y-3">
-      <h1 class="text-4xl font-bold tracking-tight text-foreground">
+  <main class="min-h-screen flex flex-col items-center justify-center gap-10 px-6">
+    <header class="text-center space-y-4 max-w-lg">
+      <h1 class="text-5xl font-bold tracking-tight">
         Tiny<span class="text-primary">TPU</span>
       </h1>
-      <p class="text-muted-foreground max-w-md">
-        A 4×4 weight-stationary systolic array in real synthesizable SystemVerilog — compiled to
-        WASM, visualized live.
+      <p class="text-muted-foreground text-lg leading-relaxed">
+        A 4×4 weight-stationary systolic array in real synthesizable
+        SystemVerilog — compiled to WASM and visualized live in the browser.
+        <br />
+        <span class="text-sm text-muted-foreground/70">
+          Nothing on screen is faked. Every value comes from actual RTL.
+        </span>
       </p>
     </header>
 
-    <section class="space-y-2 text-center">
-      <p class="text-xs text-muted-foreground uppercase tracking-widest">shadcn/ui test</p>
-      <ButtonTest client:only="react" />
+    <a
+      href="/app"
+      class="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      Watch it run →
+    </a>
+
+    <section class="grid grid-cols-2 gap-3 text-xs max-w-sm w-full">
+      {[
+        { color: "var(--pe-idle)",          label: "Idle" },
+        { color: "var(--pe-active)",        label: "Active (MAC)" },
+        { color: "var(--pe-weight-loaded)", label: "Weight Loaded" },
+        { color: "var(--pe-result)",        label: "Result Valid" },
+      ].map(({ color, label }) => (
+        <div class="rounded-lg border border-border bg-card p-3 text-card-foreground flex items-center gap-2">
+          <span class="inline-block h-3 w-3 flex-shrink-0 rounded-sm" style={`background: ${color};`}></span>
+          {label}
+        </div>
+      ))}
     </section>
 
-    <section class="grid grid-cols-2 gap-3 text-xs">
-      <div class="rounded-lg border border-border bg-card p-3 text-card-foreground">
-        <span
-          class="inline-block h-3 w-3 rounded-sm mr-2"
-          style="background: var(--pe-idle);"
-        ></span>Idle
-      </div>
-      <div class="rounded-lg border border-border bg-card p-3 text-card-foreground">
-        <span
-          class="inline-block h-3 w-3 rounded-sm mr-2"
-          style="background: var(--pe-active);"
-        ></span>Active (MAC)
-      </div>
-      <div class="rounded-lg border border-border bg-card p-3 text-card-foreground">
-        <span
-          class="inline-block h-3 w-3 rounded-sm mr-2"
-          style="background: var(--pe-weight-loaded);"
-        ></span>Weight Loaded
-      </div>
-      <div class="rounded-lg border border-border bg-card p-3 text-card-foreground">
-        <span
-          class="inline-block h-3 w-3 rounded-sm mr-2"
-          style="background: var(--pe-result);"
-        ></span>Result Valid
-      </div>
-    </section>
+    <nav class="flex gap-4 text-xs text-muted-foreground">
+      <a href="/app" class="hover:text-foreground transition-colors">Visualizer</a>
+      <span>·</span>
+      <a href="/smoke" class="hover:text-foreground transition-colors">WASM smoke test</a>
+      <span>·</span>
+      <a href="/pe-grid-test" class="hover:text-foreground transition-colors">PE grid test</a>
+    </nav>
   </main>
 </Layout>
