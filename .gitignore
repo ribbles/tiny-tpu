@@ -12,15 +12,17 @@ obj_dir/
 sim/__pycache__/
 sim/sim_build/
 
-# Simulation waveform dumps
+# Simulation waveform dumps (keep the reference waveform in docs/)
 *.vcd
 *.fst
+!docs/systolic_skew.vcd
 
 # Python virtual environment
 .venv/
 
-# WASM build intermediates
+# WASM build intermediates (obj_dir/ rule above covers Verilator output)
 wasm/build/
+wasm/**/*.mjs
 
 # Compiled object files
 *.o
@@ -33,7 +35,7 @@ wasm/build/
 .DS_Store
 *.swp
 
-# Agents 
+# Agents
 .agents/
 .claude/
 TINYTPU_ROADMAP.md

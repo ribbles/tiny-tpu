@@ -94,6 +94,15 @@ Astro + React islands + shadcn/ui + Tailwind + TypeScript strict. WASM is loaded
 
 ---
 
+## Branching Strategy
+
+- `main` is protected — **never commit directly to main**.
+- `dev` is the integration branch — all feature/fix/spike branches PR into `dev`.
+- `main` is updated only via PRs from `dev`.
+- Branch naming: `feature/`, `fix/`, `spike/`, `chore/`, etc. always branch off `dev`.
+
+---
+
 ## Non-Negotiable Rules
 
 1. **RTL is the single source of truth.** Never reimplement the matmul in JS/TS for animation. Always read state from the compiled WASM.
