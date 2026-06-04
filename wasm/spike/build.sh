@@ -29,5 +29,5 @@ em++ -O2 -std=c++17 \
   -s EXPORT_NAME=createTinyTpuSpike \
   -o "$SCRIPT_DIR/counter.mjs"
 
-echo "Done — outputs: $SCRIPT_DIR/counter.mjs + counter.wasm"
+echo "Done - outputs: $SCRIPT_DIR/counter.mjs + counter.wasm"
 echo "Serve with: cd $SCRIPT_DIR && python3 -m http.server 8080"

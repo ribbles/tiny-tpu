@@ -1,4 +1,4 @@
-# wasm/ — Verilator C++ Harness → Emscripten → WASM
+# wasm/ - Verilator C++ Harness → Emscripten → WASM
 
 This directory bridges the SystemVerilog RTL and the browser frontend.
 
@@ -21,7 +21,7 @@ web/public/tiny_tpu.wasm   # compiled RTL (~161 KB)
 | Tool | Version | Install |
 |---|---|---|
 | Verilator | ≥ 5.x | `apt install verilator` |
-| Emscripten | ≥ 3.x | [emsdk](https://emscripten.org/docs/getting_started/downloads.html) — activate before building |
+| Emscripten | ≥ 3.x | [emsdk](https://emscripten.org/docs/getting_started/downloads.html) - activate before building |
 
 Verify both are on PATH:
 
@@ -32,11 +32,11 @@ emcc --version
 
 ## How the Build Works
 
-**Step 1 — Verilate:** `verilator --cc` translates the four RTL source files into
+**Step 1 - Verilate:** `verilator --cc` translates the four RTL source files into
 C++ inside `wasm/obj_dir/`. Verilator 5.x emits multiple `V*.cpp` files instead
 of a single `__ALL.cpp`; the build script collects them all with a glob.
 
-**Step 2 — Compile to WASM:** `em++` compiles `bindings.cpp` (which `#include`s
+**Step 2 - Compile to WASM:** `em++` compiles `bindings.cpp` (which `#include`s
 `harness.cpp`) together with all Verilated model sources and the Verilator runtime
 (`verilated.cpp`, `verilated_threads.cpp`).
 
@@ -44,7 +44,7 @@ Key `em++` flags:
 
 | Flag | Why |
 |---|---|
-| `-O3` | Full optimisation — keeps WASM small and fast |
+| `-O3` | Full optimisation - keeps WASM small and fast |
 | `-std=c++17` | Required by Verilator 5.x generated code |
 | `-lembind` | Emscripten C++ bindings (embind) |
 | `MODULARIZE=1` | Wraps module in a factory function (avoids global pollution) |
@@ -75,7 +75,7 @@ sim.loadA([/* 16 int8 values, row-major */]);
 sim.loadB([/* 16 int8 values, row-major */]);
 sim.start();
 
-const states = sim.run();     // returns CycleState[] — see docs/STATE_SCHEMA.md
+const states = sim.run();     // returns CycleState[] - see docs/STATE_SCHEMA.md
 const result = sim.getResult(); // flat int32[16], row-major C = A @ B
 
 sim.delete(); // free Emscripten heap object when done
@@ -105,7 +105,7 @@ cd sim && make MODULE=test_top TOPLEVEL=tiny_tpu_top \
 
 The per-cycle `CycleState` object produced by `step()` / `run()` is defined in:
 
-- `docs/STATE_SCHEMA.md` — canonical definition
-- `web/src/lib/state-schema.ts` — TypeScript mirror
+- `docs/STATE_SCHEMA.md` - canonical definition
+- `web/src/lib/state-schema.ts` - TypeScript mirror
 
 These two files **must stay in sync** with `harness.cpp`.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# wasm/build.sh — Verilate TinyTPU RTL and compile to WASM via Emscripten.
+# wasm/build.sh - Verilate TinyTPU RTL and compile to WASM via Emscripten.
 #
 # Usage (from project root):
 #   bash wasm/build.sh
@@ -10,7 +10,7 @@
 #
 # Prerequisites:
 #   - Verilator >=5.x   (verilator on PATH)
-#   - Emscripten SDK    (emcc/em++ on PATH — activate emsdk first)
+#   - Emscripten SDK    (emcc/em++ on PATH - activate emsdk first)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -41,7 +41,7 @@ fi
 echo "[info] VERILATOR_ROOT = $VROOT"
 
 # ---------------------------------------------------------------------------
-# Step 1 — Generate Verilated C++ from RTL
+# Step 1 - Generate Verilated C++ from RTL
 # ---------------------------------------------------------------------------
 echo "[1/2] Verilating RTL → C++ ..."
 mkdir -p "$OBJ_DIR"
@@ -56,7 +56,7 @@ verilator --cc $RTL \
 echo "      Generated files in $OBJ_DIR"
 
 # ---------------------------------------------------------------------------
-# Step 2 — Compile to WASM via Emscripten
+# Step 2 - Compile to WASM via Emscripten
 # ---------------------------------------------------------------------------
 echo "[2/2] Compiling WASM with Emscripten ..."
 mkdir -p "$OUT_DIR"
