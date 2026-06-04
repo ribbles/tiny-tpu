@@ -1,4 +1,4 @@
-# RTL — Signal Dictionary & Dataflow Spec
+# RTL - Signal Dictionary & Dataflow Spec
 
 ## Module Hierarchy
 
@@ -70,6 +70,7 @@ as the input: column j's result is valid `j` cycles after column 0's.  The
 controller holds for `N−1 = 3` drain cycles to collect all columns.
 
 **Total cycle count per 4×4 pass:**
+
 ```
 LOAD_WEIGHTS : N       = 4 cycles
 STREAM       : N+(N-1) = 7 cycles
@@ -130,6 +131,7 @@ dbg_psum  [i][j]  →  psum_out of PE[i][j] (partial sum passing to PE[i+1][j])
 ```
 
 `actIn` for PE[i][j] (as needed by the state schema) is derived as:
+
 ```
 actIn[i][j] = (j == 0) ? act_west[i] : dbg_act[i][j-1]
 ```
@@ -173,7 +175,7 @@ the array computes `(a_buf)^T @ B = A @ B`.
 **`done`** is a registered output that fires for one cycle at the start of the cycle
 after the last drain step (`drain_cyc == N-2`).
 
-**Exposed counters:** `stream_cyc_out [2:0]`, `drain_cyc_out [1:0]` — used by
+**Exposed counters:** `stream_cyc_out [2:0]`, `drain_cyc_out [1:0]` - used by
 `tiny_tpu_top` for result capture.
 
 ---
@@ -206,6 +208,7 @@ one cycle after `done` fires (the last psum propagates to the bottom at exactly 
 cycle).
 
 **Caller protocol:**
+
 1. Set `a_in`, `b_in`.
 2. Pulse `start=1` for one cycle.
 3. Wait for `done=1`.

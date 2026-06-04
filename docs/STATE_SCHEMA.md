@@ -1,4 +1,4 @@
-# STATE_SCHEMA.md — TinyTPU Per-Cycle State Contract
+# STATE_SCHEMA.md - TinyTPU Per-Cycle State Contract
 
 > **Sync requirement:** This file and `web/src/lib/state-schema.ts` define the same
 > contract from two angles (prose + types). They **must stay in sync**. Any field
@@ -11,7 +11,7 @@
 
 The C++ harness (`wasm/harness.cpp`) emits one `CycleState` object per clock cycle.
 The React visualizer reads these objects to animate the systolic array. Nothing is
-fabricated in JavaScript — every field maps directly to a hardware signal or a
+fabricated in JavaScript - every field maps directly to a hardware signal or a
 documented derivation from hardware signals.
 
 ---
@@ -29,14 +29,14 @@ documented derivation from hardware signals.
 }
 ```
 
-### `cycle` — `number` (non-negative integer)
+### `cycle` - `number` (non-negative integer)
 
 Cycle index, starting at 0 on the cycle the `start` signal fires. Increments by 1
 each clock tick until `done` is true.
 
 ---
 
-### `fsmState` — `"IDLE" | "LOAD_WEIGHTS" | "STREAM" | "DRAIN" | "DONE"`
+### `fsmState` - `"IDLE" | "LOAD_WEIGHTS" | "STREAM" | "DRAIN" | "DONE"`
 
 The controller FSM state for this cycle.
 
@@ -50,14 +50,14 @@ the `controller.sv` enum:
 | `3'd2`          | `"STREAM"`         |
 | `3'd3`          | `"DRAIN"`          |
 
-**Derived "DONE":** The hardware FSM has no `DONE` state — after `DRAIN` it returns
+**Derived "DONE":** The hardware FSM has no `DONE` state - after `DRAIN` it returns
 to `IDLE`. The harness overrides `fsmState` to `"DONE"` on the cycle where `done`
 is asserted (`done == 1`). On that cycle the hardware reads as `ST_DRAIN` transitioning
 to `ST_IDLE`; `"DONE"` is a harness-level convenience for the visualizer.
 
 ---
 
-### `pes` — `PEState[]` (16 entries, row-major)
+### `pes` - `PEState[]` (16 entries, row-major)
 
 One entry per processing element, ordered row-major: index `i*4 + j` is PE[row=i][col=j].
 
@@ -67,14 +67,14 @@ One entry per processing element, ordered row-major: index `i*4 + j` is PE[row=i
 |----------|-----------|------------------------------------------------------|
 | `row`    | `number`  | Row index `i` (0–3)                                  |
 | `col`    | `number`  | Column index `j` (0–3)                               |
-| `weight` | `number`  | `dbg_weight[i][j]` — signed int8, stationary weight  |
-| `actIn`  | `number`  | **Derived** — see note below                         |
-| `psum`   | `number`  | `dbg_psum[i][j]` — signed int32, registered psum_out |
+| `weight` | `number`  | `dbg_weight[i][j]` - signed int8, stationary weight  |
+| `actIn`  | `number`  | **Derived** - see note below                         |
+| `psum`   | `number`  | `dbg_psum[i][j]` - signed int32, registered psum_out |
 | `active` | `boolean` | `true` when `fsmState == "STREAM"` and `actIn != 0`  |
 
 **`actIn` derivation (not a direct register read):**
 
-The debug bus exposes `dbg_act[i][j]` which is `pe[i][j].act_out` — the *registered
+The debug bus exposes `dbg_act[i][j]` which is `pe[i][j].act_out` - the *registered
 output* of the activation passthrough, i.e., `act_in` from the *previous* cycle.
 The actual activation *input* to PE[i][j] on the current cycle is:
 
@@ -88,7 +88,7 @@ This derivation is performed in the C++ harness before populating `CycleState`.
 
 ---
 
-### `westInputs` — `number[]` (4 entries)
+### `westInputs` - `number[]` (4 entries)
 
 `westInputs[i]` is the activation value entering the left edge of row `i` this cycle.
 
@@ -98,7 +98,7 @@ outside its active skew window.
 
 ---
 
-### `southOutputs` — `SouthOutput[]` (4 entries)
+### `southOutputs` - `SouthOutput[]` (4 entries)
 
 One entry per column. `southOutputs[j]` describes the value exiting the bottom of
 column `j` this cycle.
@@ -108,7 +108,7 @@ column `j` this cycle.
 | Field   | Type      | Hardware source                                       |
 |---------|-----------|-------------------------------------------------------|
 | `col`   | `number`  | Column index `j` (0–3)                                |
-| `value` | `number`  | `dbg_south[j]` — signed int32 psum leaving bottom row |
+| `value` | `number`  | `dbg_south[j]` - signed int32 psum leaving bottom row |
 | `valid` | `boolean` | `true` when this column's output carries a final result element on this cycle |
 
 **`valid` semantics:** The harness computes validity from the FSM state and internal
@@ -118,7 +118,7 @@ the result buffer. There is exactly one valid cycle per output element per colum
 
 ---
 
-### `done` — `boolean`
+### `done` - `boolean`
 
 `true` on the single cycle where the hardware `done` signal is asserted. At this
 point all 16 output elements are captured in the result buffer and `fsmState` is
