@@ -1,4 +1,4 @@
-// controller.sv — TinyTPU FSM: IDLE → LOAD_WEIGHTS → STREAM → DRAIN → IDLE
+// controller.sv - TinyTPU FSM: IDLE → LOAD_WEIGHTS → STREAM → DRAIN → IDLE
 //
 // Cycle breakdown for N=4 (matches golden.py expected_cycles()=14):
 //   LOAD_WEIGHTS : 4 cycles   (load_cyc 0..3)

@@ -3,9 +3,9 @@ cocotb test suite for the Processing Element (pe.sv) MAC cell.
 
 Tests
 -----
-pe_basic   — hand-verified vectors; confirms 1-cycle register latency and
+pe_basic   - hand-verified vectors; confirms 1-cycle register latency and
              correct signed arithmetic (positive, negative, boundary values).
-pe_random  — 200 random (weight, act, psum) triples; bit-matched against a
+pe_random  - 200 random (weight, act, psum) triples; bit-matched against a
              Python reference model that applies 32-bit wrap-around semantics
              identical to the RTL accumulator. Fixed seed for reproducibility.
 

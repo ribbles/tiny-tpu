@@ -1,9 +1,9 @@
 /**
- * PEGridDemo — test island for P7-T1 verification.
+ * PEGridDemo - test island for P7-T1 verification.
  * Renders three hardcoded CycleState snapshots to exercise every PE color state:
- *   1. LOAD_WEIGHTS cycle — all PEs show weight-loaded (blue)
- *   2. STREAM cycle — some PEs active (lime), others weight-loaded (blue)
- *   3. DONE cycle — all contributing PEs show result (emerald)
+ *   1. LOAD_WEIGHTS cycle - all PEs show weight-loaded (blue)
+ *   2. STREAM cycle - some PEs active (lime), others weight-loaded (blue)
+ *   3. DONE cycle - all contributing PEs show result (emerald)
  *
  * Usage: <PEGridDemo client:only="react" />
  */

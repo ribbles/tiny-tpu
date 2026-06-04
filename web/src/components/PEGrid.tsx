@@ -1,5 +1,5 @@
 /**
- * PEGrid — pure presentational SVG rendering of the 4×4 systolic array.
+ * PEGrid - pure presentational SVG rendering of the 4×4 systolic array.
  *
  * Accepts a single CycleState snapshot and renders:
  *   - 4×4 PE cells colored by hardware state (idle / weight-loaded / active / result)
@@ -126,7 +126,7 @@ function PECell({ pe, fsm, reduced }: PECellProps) {
   const y = cellY(pe.row);
   const fill = peFill(pe, fsm);
   const psumColor = pePsumColor(pe, fsm);
-  const colorTr = reduced ? "none" : "fill 250ms ease-in-out";
+  const colorTr = reduced ? "none" : "fill 120ms ease-out";
   const motionTr = reduced ? { duration: 0 } : { duration: 0.18, ease: "easeOut" as const };
 
   return (
@@ -134,7 +134,7 @@ function PECell({ pe, fsm, reduced }: PECellProps) {
       role="img"
       aria-label={`PE[${pe.row}][${pe.col}] weight=${pe.weight} actIn=${pe.actIn} psum=${pe.psum}${pe.active ? " active" : ""}`}
     >
-      {/* Background — CSS transition for CSS-var color interpolation */}
+      {/* Background - CSS transition for CSS-var color interpolation */}
       <rect
         x={x}
         y={y}
@@ -155,32 +155,32 @@ function PECell({ pe, fsm, reduced }: PECellProps) {
         strokeWidth={1}
       />
 
-      {/* Weight — top-left corner */}
+      {/* Weight - top-left corner */}
       <text
         x={x + 7}
         y={y + 13}
         fontSize={9}
-        fontFamily="monospace"
+        fontFamily="'Geist Mono', ui-monospace, monospace"
         fill="var(--muted-foreground)"
       >
         w={pe.weight}
       </text>
 
-      {/* psum — center, large */}
+      {/* psum - center, large */}
       <text
         x={x + CELL / 2}
         y={y + CELL / 2 + 9}
         textAnchor="middle"
         fontSize={20}
         fontWeight="bold"
-        fontFamily="monospace"
+        fontFamily="'Geist Mono', ui-monospace, monospace"
         style={{ fill: psumColor, transition: colorTr }}
       >
         <title>{pe.psum}</title>
         {fmt(pe.psum)}
       </text>
 
-      {/* actIn indicator — bottom-left, shown when activation is non-zero */}
+      {/* actIn indicator - bottom-left, shown when activation is non-zero */}
       <AnimatePresence>
         {pe.actIn !== 0 && (
           <motion.g
@@ -202,7 +202,7 @@ function PECell({ pe, fsm, reduced }: PECellProps) {
               y={y + CELL - 9}
               textAnchor="middle"
               fontSize={9}
-              fontFamily="monospace"
+              fontFamily="'Geist Mono', ui-monospace, monospace"
               fill="var(--pe-active)"
             >
               {pe.actIn}
@@ -227,7 +227,7 @@ function SouthToken({ col, value, valid, reduced }: SouthTokenProps) {
   const x = cellX(col) + CELL / 2;
   const lineY1 = TOP_H + GRID_SIDE + 1;
   const circY = lineY1 + 28;
-  const colorTr = reduced ? "none" : "fill 250ms ease-in-out, stroke 250ms ease-in-out";
+  const colorTr = reduced ? "none" : "fill 120ms ease-out, stroke 120ms ease-out";
 
   return (
     <g>
@@ -258,7 +258,7 @@ function SouthToken({ col, value, valid, reduced }: SouthTokenProps) {
         textAnchor="middle"
         fontSize={12}
         fontWeight="bold"
-        fontFamily="monospace"
+        fontFamily="'Geist Mono', ui-monospace, monospace"
         style={{
           fill: valid ? "var(--primary-foreground)" : "var(--muted-foreground)",
           transition: colorTr,
@@ -274,7 +274,7 @@ function SouthToken({ col, value, valid, reduced }: SouthTokenProps) {
 // ─── PEGrid (main export) ─────────────────────────────────────────────────────
 
 export interface PEGridProps {
-  /** Hardware state snapshot for a single clock cycle. Pure read — no side effects. */
+  /** Hardware state snapshot for a single clock cycle. Pure read - no side effects. */
   state: CycleState;
 }
 
@@ -282,7 +282,7 @@ export function PEGrid({ state }: PEGridProps) {
   const reduced = useReducedMotion() ?? false;
   const tokenTr = reduced
     ? { duration: 0 }
-    : { duration: 0.2, ease: "easeOut" as const };
+    : { duration: 0.12, ease: "easeOut" as const };
 
   return (
     <div
@@ -305,7 +305,7 @@ export function PEGrid({ state }: PEGridProps) {
             y={TOP_H - 10}
             textAnchor="middle"
             fontSize={11}
-            fontFamily="monospace"
+            fontFamily="'Geist Mono', ui-monospace, monospace"
             fill="var(--muted-foreground)"
           >
             C{col}
@@ -316,18 +316,18 @@ export function PEGrid({ state }: PEGridProps) {
         {Array.from({ length: N }, (_, row) => (
           <text
             key={row}
-            x={WEST_W - 40}
+            x={12}
             y={cellY(row) + CELL / 2 + 4}
-            textAnchor="middle"
+            textAnchor="end"
             fontSize={11}
-            fontFamily="monospace"
+            fontFamily="'Geist Mono', ui-monospace, monospace"
             fill="var(--muted-foreground)"
           >
             R{row}
           </text>
         ))}
 
-        {/* West input tokens — animate in/out as activations arrive */}
+        {/* West input tokens - animate in/out as activations arrive */}
         <AnimatePresence>
           {state.westInputs
             .map((val, row) => ({ val, row }))
@@ -363,7 +363,7 @@ export function PEGrid({ state }: PEGridProps) {
                     y={tcy + 4}
                     textAnchor="middle"
                     fontSize={12}
-                    fontFamily="monospace"
+                    fontFamily="'Geist Mono', ui-monospace, monospace"
                     fontWeight="bold"
                     fill="var(--pe-active)"
                   >

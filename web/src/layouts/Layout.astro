@@ -2,10 +2,42 @@
 interface Props {
   title: string;
   description?: string;
+  /** Absolute URL for the OG/Twitter image. Defaults to /og-image.png. */
+  ogImage?: string;
+  /** Override canonical URL. Defaults to current page URL. */
+  canonical?: string;
 }
 
-const { title, description = "A 4×4 weight-stationary systolic array you can watch run." } =
-  Astro.props;
+const {
+  title,
+  description = "TPU simulator: SystemVerilog compiled to WebAssembly. Learn how a TPU works with a live systolic array visualizer running real RTL in your browser.",
+  ogImage,
+  canonical,
+} = Astro.props;
+
+const site = Astro.site?.toString().replace(/\/$/, "") ?? "";
+const pageUrl = canonical ?? (site + Astro.url.pathname);
+const ogImageUrl = ogImage ?? (site + "/og-image.png");
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "TinyTPU",
+  description,
+  url: site || pageUrl,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Web",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  author: {
+    "@type": "Person",
+    name: "Deaneeth",
+    url: "https://github.com/deaneeth",
+  },
+};
 ---
 
 <!doctype html>
@@ -13,11 +45,127 @@ const { title, description = "A 4×4 weight-stationary systolic array you can wa
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content={description} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!--
+      Theme init - runs synchronously before any CSS/paint so there's zero flash.
+      Reads localStorage first; falls back to OS preference; defaults to dark.
+    -->
+    <script is:inline>
+      (function () {
+        var saved = localStorage.getItem('tpu-theme');
+        var preferLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+        var theme = saved ? saved : (preferLight ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+
+    <!-- Fonts: Geist Sans + Geist Mono (Vercel, open-source) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Primary meta -->
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={pageUrl} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="TinyTPU" />
+
+    <!-- Twitter card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <!-- Structured data -->
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+
+    <!-- Keywords hint -->
+    <meta
+      name="keywords"
+      content="TPU simulator, systolic array visualizer, learn how a TPU works, SystemVerilog, WebAssembly, WASM, matrix multiply, hardware visualization"
+    />
+
+    <!-- Theme / color-scheme -->
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171717" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f9" />
   </head>
   <body>
     <slot />
+    <!-- Client theme toggle logic -->
+    <script>
+      (function () {
+        var html = document.documentElement;
+        
+        function setupThemeToggle() {
+          var btn = document.getElementById('theme-toggle');
+          if (!btn) return;
+
+          function syncLabel() {
+            if (!btn) return;
+            var isDark = html.getAttribute('data-theme') !== 'light';
+            btn.setAttribute(
+              'aria-label',
+              isDark ? 'Switch to light mode' : 'Switch to dark mode'
+            );
+          }
+
+          if (btn.dataset.hasThemeListener) return;
+          btn.dataset.hasThemeListener = 'true';
+
+          btn.addEventListener('click', function () {
+            var current = html.getAttribute('data-theme');
+            var next    = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('tpu-theme', next);
+            syncLabel();
+          });
+
+          syncLabel();
+        }
+
+        // Run setup immediately
+        setupThemeToggle();
+
+        // Listen for storage events (keeps multiple tabs in sync)
+        window.addEventListener('storage', function (e) {
+          if (e.key === 'tpu-theme' && e.newValue) {
+            html.setAttribute('data-theme', e.newValue);
+            var btn = document.getElementById('theme-toggle');
+            if (btn) {
+              var isDark = e.newValue !== 'light';
+              btn.setAttribute(
+                'aria-label',
+                isDark ? 'Switch to light mode' : 'Switch to dark mode'
+              );
+            }
+          }
+        });
+
+        /*
+         * Enable smooth transitions AFTER first paint.
+         * requestAnimationFrame fires after the browser has rendered the
+         * initial frame, so adding the class here never causes a load flash.
+         */
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            html.classList.add('theme-ready');
+          });
+        });
+      })();
+    </script>
   </body>
 </html>

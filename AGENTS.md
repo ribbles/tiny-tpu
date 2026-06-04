@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
 
 **Always read `CONTEXT.md` before any task.**
 
@@ -23,13 +23,11 @@ source ~/.venvs/tinytpu/bin/activate
 ```
 
 ### RTL Lint
-
 ```bash
 verilator --lint-only -Wall rtl/*.sv
 ```
 
 ### Simulation (cocotb - run from `sim/`)
-
 ```bash
 # Golden model tests
 pytest sim/golden.py -q
@@ -43,14 +41,12 @@ cd sim && make MODULE=test_top TOPLEVEL=tiny_tpu_top \
 ```
 
 ### WASM Build
-
 ```bash
 bash wasm/build.sh
 # outputs web/public/tiny_tpu.mjs + web/public/tiny_tpu.wasm
 ```
 
 ### Frontend (from `web/`)
-
 ```bash
 pnpm dev          # dev server
 pnpm build        # production build
@@ -60,7 +56,6 @@ pnpm format       # prettier
 ```
 
 ### Full pre-PR check
-
 ```bash
 verilator --lint-only -Wall rtl/*.sv
 cd sim && pytest golden.py -q && make MODULE=test_top TOPLEVEL=tiny_tpu_top \

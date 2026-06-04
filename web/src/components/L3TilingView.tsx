@@ -1,5 +1,5 @@
 /**
- * L3TilingView — visualizes how a large matrix multiply is tiled onto the 4×4 array.
+ * L3TilingView - visualizes how a large matrix multiply is tiled onto the 4×4 array.
  *
  * For an N×N input (N > 4), the matmul is split into TILE_SIZE×TILE_SIZE sub-problems:
  *   - tM × tN output tiles, each accumulating tK partial results from real RTL passes.
@@ -45,7 +45,7 @@ export function L3TilingView({ passes, assembledC, matSize }: L3TilingViewProps)
         <p className="text-sm font-semibold text-muted-foreground">L3 Tiling</p>
         <p className="text-xs text-muted-foreground max-w-xs mx-auto">
           Run a matrix larger than 4×4 to see tiling in action. Try{" "}
-          <strong>8×8</strong> — it splits into 8 real RTL passes.
+          <strong>8×8</strong> - it splits into 8 real RTL passes.
         </p>
       </div>
     );
@@ -106,6 +106,7 @@ export function L3TilingView({ passes, assembledC, matSize }: L3TilingViewProps)
                 return (
                   <button
                     key={`${oi}-${oj}`}
+                    type="button"
                     onClick={() => selectTile(oi, oj)}
                     className={`
                       h-16 w-16 rounded-lg border-2 text-xs font-mono flex flex-col items-center justify-center gap-0.5
@@ -158,6 +159,7 @@ export function L3TilingView({ passes, assembledC, matSize }: L3TilingViewProps)
               {tilePasses.map((tp, ki) => (
                 <button
                   key={ki}
+                  type="button"
                   onClick={() => { setSelKPass(ki); setCycleIdx(0); }}
                   className={`
                     rounded px-3 py-1.5 text-xs font-mono text-left transition-colors
@@ -220,45 +222,50 @@ export function L3TilingView({ passes, assembledC, matSize }: L3TilingViewProps)
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 items-start">
-            <PEGrid state={currentState} />
+          <div className="flex flex-col lg:flex-row gap-4 items-start">
+            {/* PEGrid constrained so tile info fits beside it */}
+            <div className="w-full lg:w-auto lg:flex-shrink-0" style={{ maxWidth: 340 }}>
+              <PEGrid state={currentState} />
+            </div>
 
-            {/* Tile info */}
-            <div className="space-y-3 min-w-0 flex-1">
-              <div className="space-y-1 text-xs font-mono">
-                <p className="text-muted-foreground">A sub-tile (this pass):</p>
-                <div
-                  className="inline-grid gap-1"
-                  style={{ gridTemplateColumns: `repeat(${TILE_SIZE}, minmax(0, 1fr))` }}
-                >
-                  {selectedPass.aFlat.map((v, i) => (
-                    <div
-                      key={i}
-                      className="h-7 w-9 rounded border border-border/40 bg-muted/40 flex items-center justify-center text-foreground"
-                    >
-                      {v}
-                    </div>
-                  ))}
+            {/* Tile info: A + B side-by-side, partial result below */}
+            <div className="space-y-3 min-w-0 flex-1 text-xs font-mono">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <p className="text-muted-foreground font-semibold">A sub-tile (this pass):</p>
+                  <div
+                    className="inline-grid gap-1"
+                    style={{ gridTemplateColumns: `repeat(${TILE_SIZE}, minmax(0, 1fr))` }}
+                  >
+                    {selectedPass.aFlat.map((v, i) => (
+                      <div
+                        key={i}
+                        className="h-7 w-9 rounded border border-border/40 bg-muted/40 flex items-center justify-center text-foreground"
+                      >
+                        {v}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-muted-foreground font-semibold">B sub-tile (stationary weights):</p>
+                  <div
+                    className="inline-grid gap-1"
+                    style={{ gridTemplateColumns: `repeat(${TILE_SIZE}, minmax(0, 1fr))` }}
+                  >
+                    {selectedPass.bFlat.map((v, i) => (
+                      <div
+                        key={i}
+                        className="h-7 w-9 rounded border border-border/40 bg-muted/40 flex items-center justify-center text-foreground"
+                      >
+                        {v}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1 text-xs font-mono">
-                <p className="text-muted-foreground">B sub-tile (stationary weights):</p>
-                <div
-                  className="inline-grid gap-1"
-                  style={{ gridTemplateColumns: `repeat(${TILE_SIZE}, minmax(0, 1fr))` }}
-                >
-                  {selectedPass.bFlat.map((v, i) => (
-                    <div
-                      key={i}
-                      className="h-7 w-9 rounded border border-border/40 bg-muted/40 flex items-center justify-center text-foreground"
-                    >
-                      {v}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-1 text-xs font-mono">
-                <p className="text-muted-foreground">Partial result (this pass):</p>
+              <div className="space-y-1">
+                <p className="text-muted-foreground font-semibold">Partial result (this pass):</p>
                 <div
                   className="inline-grid gap-1"
                   style={{ gridTemplateColumns: `repeat(${TILE_SIZE}, minmax(0, 1fr))` }}
@@ -282,7 +289,7 @@ export function L3TilingView({ passes, assembledC, matSize }: L3TilingViewProps)
       {assembledC && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Assembled C = A × B ({matSize}×{matSize}) — all {passes.length} RTL passes accumulated
+            Assembled C = A × B ({matSize}×{matSize}) - all {passes.length} RTL passes accumulated
           </p>
           <div
             className="inline-grid gap-1"

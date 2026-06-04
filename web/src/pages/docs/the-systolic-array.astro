@@ -1,0 +1,873 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { buttonVariants } from "@/components/ui/button";
+import "@/styles/global.css";
+
+const GITHUB_URL = "https://github.com/deaneeth/tiny-tpu";
+
+// Static diagram cells for the 4×4 array illustration
+const cells = Array.from({ length: 16 }, (_, i) => {
+  const row = Math.floor(i / 4);
+  const col = i % 4;
+  const isDiag = row === col;
+  const isSubDiag = row === col + 1;
+  const isActive = isDiag;
+  return { row, col, isActive, isSubDiag, delay: (row + col) * 60 };
+});
+
+// Skew table rows: cycle, act_west inputs for each row
+const skewTable = [
+  { cyc: 0, r0: "A[0][0]", r1: "0",      r2: "0",      r3: "0"      },
+  { cyc: 1, r0: "A[0][1]", r1: "A[1][0]", r2: "0",      r3: "0"      },
+  { cyc: 2, r0: "A[0][2]", r1: "A[1][1]", r2: "A[2][0]", r3: "0"     },
+  { cyc: 3, r0: "A[0][3]", r1: "A[1][2]", r2: "A[2][1]", r3: "A[3][0]"},
+  { cyc: 4, r0: "0",       r1: "A[1][3]", r2: "A[2][2]", r3: "A[3][1]"},
+  { cyc: 5, r0: "0",       r1: "0",       r2: "A[2][3]", r3: "A[3][2]"},
+  { cyc: 6, r0: "0",       r1: "0",       r2: "0",       r3: "A[3][3]"},
+];
+---
+
+<Layout
+  title="The Systolic Array — TinyTPU"
+  description="Weight-stationary dataflow, diagonal skew, and why TPUs use systolic arrays. Conceptual primer with live visualizer embed."
+>
+  <div class="page">
+
+    <!-- NAV -->
+    <header class="nav-wrap">
+      <nav class="container nav" aria-label="Site navigation">
+        <a href="/" class="logo" aria-label="TinyTPU home">
+          <span class="logo-text">Tiny<strong>TPU</strong></span>
+          <span class="logo-badge">RTL</span>
+        </a>
+        <div class="nav-links" role="list">
+          <a href="/" role="listitem">Home</a>
+          <a href="/app" role="listitem">Visualizer</a>
+          <a href="/docs/how-it-works" role="listitem">How it works</a>
+          <a href="/docs/the-systolic-array" role="listitem" aria-current="page">Systolic array</a>
+          <a href="/docs/architecture" role="listitem">Architecture</a>
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" role="listitem">GitHub</a>
+        </div>
+        <a href="/app" class={buttonVariants({ variant: "default", size: "sm" }) + " font-semibold"}>Open instrument</a>
+      </nav>
+    </header>
+
+    <!-- HERO -->
+    <section class="doc-hero border-b border-hairline">
+      <div class="container">
+        <div class="breadcrumb">
+          <a href="/">Home</a>
+          <span aria-hidden="true">/</span>
+          <span>The systolic array</span>
+        </div>
+        <h1 class="doc-title">How a systolic array computes a matrix multiply</h1>
+        <p class="doc-lead">
+          The weight-stationary systolic array is the dataflow that Google's TPU-v1 uses.
+          TinyTPU implements this dataflow in real synthesizable SystemVerilog — not a
+          simulation shortcut. This page explains why the design works, what the diagonal
+          skew is, and why TPUs use this structure.
+        </p>
+      </div>
+    </section>
+
+    <!-- WHAT IS A PE -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>The processing element (PE)</h2>
+        <p>
+          The systolic array is a grid of identical cells called processing elements.
+          Each PE does one thing per clock: a multiply-accumulate (MAC).
+        </p>
+
+        <div class="equation-block" aria-label="MAC equation">
+          <span class="eq-term">psum_out</span>
+          <span class="eq-op">&le;</span>
+          <span class="eq-term">psum_in</span>
+          <span class="eq-op">+</span>
+          <span class="eq-term">weight_reg</span>
+          <span class="eq-op">&times;</span>
+          <span class="eq-term">act_in</span>
+        </div>
+
+        <p>
+          Three signals go in; two come out:
+        </p>
+        <ul class="signal-list">
+          <li>
+            <code>act_in</code> — the activation value arriving from the left.
+            The PE passes it rightward (<code>act_out &lt;= act_in</code>, registered).
+          </li>
+          <li>
+            <code>psum_in</code> — the partial sum arriving from above.
+            The PE adds its own product and sends the total downward.
+          </li>
+          <li>
+            <code>weight_reg</code> — the <em>stationary</em> weight.
+            This does not change during a run; it is loaded once before streaming starts.
+          </li>
+        </ul>
+        <p>
+          Because weight and activation each touch the PE on the same clock cycle, there
+          is no memory access during computation — the memory bandwidth bottleneck that
+          plagues conventional processors is completely absent.
+        </p>
+      </div>
+    </section>
+
+    <!-- WEIGHT-STATIONARY DATAFLOW -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>Weight-stationary dataflow</h2>
+        <p>
+          "Weight-stationary" describes <em>where the data stays</em> during computation.
+          Matrix B is loaded as stationary weights: PE[i][j] holds B[i][j] for the
+          entire duration of one matrix multiply. Matrix A then streams in from the left
+          edge, one column-element per PE-row per cycle.
+        </p>
+
+        <div class="array-diagram" aria-label="4×4 systolic array diagram">
+          <div class="array-labels-col" aria-hidden="true">
+            <div class="label-spacer"></div>
+            {[0,1,2,3].map(r => <div class="row-label">row {r}</div>)}
+          </div>
+          <div class="array-inner">
+            <div class="col-labels" aria-hidden="true">
+              {[0,1,2,3].map(c => <div class="col-label">col {c}</div>)}
+            </div>
+            <div class="pe-grid" role="presentation">
+              {cells.map(pe => (
+                <div
+                  class={["pe-cell", pe.isActive ? "pe-active" : "", pe.isSubDiag ? "pe-sub" : ""].filter(Boolean).join(" ")}
+                  style={`--d:${pe.delay}ms`}
+                  aria-label={`PE[${pe.row}][${pe.col}] holds B[${pe.row}][${pe.col}]`}
+                >
+                  <span class="pe-label">PE</span>
+                  <span class="pe-coord">{pe.row},{pe.col}</span>
+                  <span class="pe-weight">B[{pe.row}][{pe.col}]</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div class="array-annotation" aria-hidden="true">
+            <div class="ann-west">
+              <span class="ann-arrow">→</span>
+              <span class="ann-label">A streams in (skewed)</span>
+            </div>
+            <div class="ann-south">
+              <span class="ann-label">C drains out</span>
+              <span class="ann-arrow">↓</span>
+            </div>
+          </div>
+        </div>
+
+        <p>
+          This dataflow has a critical advantage: because B never moves, every PE can
+          accumulate partial sums into a running total without waiting for memory.
+          Only A and the growing partial sums move — and they move in lockstep with
+          the clock, the heartbeat that gives the systolic array its name.
+        </p>
+        <div class="callout callout--amber">
+          <strong>Why Google chose this for TPU-v1:</strong> in a deep learning
+          inference pass, model weights are loaded once per forward pass and reused
+          for every input example in a batch. Weight-stationary dataflow perfectly
+          exploits this reuse — you pay the memory bandwidth cost of loading B once,
+          then multiply it against thousands of A matrices "for free" in subsequent
+          passes.
+        </div>
+      </div>
+    </section>
+
+    <!-- DIAGONAL SKEW -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>The diagonal skew — why it exists</h2>
+        <p>
+          Here is the problem: PE[0][0] is adjacent to the left edge, but PE[0][3]
+          is three hops to the right. For the matmul to be correct, element A[0][k]
+          must arrive at column k on the cycle that the partial sum for output
+          element C[0][j] is accumulating at PE[0][j].
+        </p>
+        <p>
+          Since activations travel one PE-width per cycle, row i of A must be
+          delayed by i cycles relative to row 0. This diagonal stagger is called
+          the <em>skew</em>:
+        </p>
+
+        <div class="skew-table-wrap">
+          <table class="skew-table" aria-label="Activation skew table: which element enters each row each STREAM cycle">
+            <thead>
+              <tr>
+                <th scope="col">STREAM cycle</th>
+                <th scope="col">Row 0 west input</th>
+                <th scope="col">Row 1 west input</th>
+                <th scope="col">Row 2 west input</th>
+                <th scope="col">Row 3 west input</th>
+              </tr>
+            </thead>
+            <tbody>
+              {skewTable.map(row => (
+                <tr>
+                  <td class="cyc-cell">{row.cyc}</td>
+                  <td class={row.r0 === "0" ? "zero-cell" : "act-cell"}>{row.r0}</td>
+                  <td class={row.r1 === "0" ? "zero-cell" : "act-cell"}>{row.r1}</td>
+                  <td class={row.r2 === "0" ? "zero-cell" : "act-cell"}>{row.r2}</td>
+                  <td class={row.r3 === "0" ? "zero-cell" : "act-cell"}>{row.r3}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The diagonal is not artistic — it is a timing requirement. If you send all rows
+          simultaneously (no skew), A[1][0] arrives at PE[1][0] one cycle before
+          B[0][0]'s partial sum has propagated down from PE[0][0], corrupting the output.
+        </p>
+        <p>
+          This is why the waveform from a real RTL simulation of TinyTPU shows a moving
+          diagonal of non-zero <code>act_west</code> values — that diagonal is the skew,
+          and it is the visual signature of a correctly operating systolic array.
+        </p>
+        <div class="callout callout--cyan">
+          <strong>Where the skew is applied:</strong> <code>controller.sv</code>, not
+          <code>systolic_array.sv</code>. The array module wires <code>act_west[i]</code>
+          directly to row i's left edge. The controller is responsible for
+          presenting the right element at the right cycle — the array is a dumb grid,
+          which is exactly what makes it cheap to implement in silicon.
+        </div>
+
+        <h3>Cycle budget for a 4×4 pass</h3>
+        <div class="cycle-table-wrap">
+          <table class="cycle-table" aria-label="Cycle budget for a 4×4 matrix multiply">
+            <thead>
+              <tr>
+                <th scope="col">Phase</th>
+                <th scope="col">Cycles</th>
+                <th scope="col">What happens</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>LOAD_WEIGHTS</code></td>
+                <td class="cyc-num">4</td>
+                <td>B is loaded column-by-column into the PE grid</td>
+              </tr>
+              <tr>
+                <td><code>STREAM</code></td>
+                <td class="cyc-num">7</td>
+                <td>A streams in with diagonal skew; MACs fire</td>
+              </tr>
+              <tr>
+                <td><code>DRAIN</code></td>
+                <td class="cyc-num">3</td>
+                <td>Final partial sums propagate to the south edge</td>
+              </tr>
+              <tr class="total-row">
+                <td><strong>Total</strong></td>
+                <td class="cyc-num"><strong>14</strong></td>
+                <td>Matches <code>golden.py expected_cycles()</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TILING -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>Tiling — matrices larger than the array</h2>
+        <p>
+          A 4×4 array holds 16 weights. An 8×8 matrix multiply requires 64 weights
+          — more than the array can hold at once. The solution is <em>tiling</em>:
+          split the large matmul into 4×4 tiles and run multiple passes, accumulating
+          partial results in software between passes.
+        </p>
+        <p>
+          In TinyTPU's L3 view, the TypeScript orchestration layer calls the 4×4 WASM
+          core repeatedly — once per tile pair — and accumulates the results. Each
+          individual tile still runs on real RTL, so the MAC arithmetic is hardware-correct.
+          Only the inter-tile accumulation happens in software, and that is documented
+          clearly in the UI.
+        </p>
+        <p>
+          For an 8×8 matmul, the tiling schedule is 2×2 output tiles × 2 K-dimension
+          tiles = 8 RTL passes total. The assembled output matches
+          <code>matmul_golden(A, B)</code> exactly.
+        </p>
+      </div>
+    </section>
+
+    <!-- CTA TO VISUALIZER -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <div class="viz-cta">
+          <div class="viz-cta-copy">
+            <h2>See it execute</h2>
+            <p>
+              The L2 tab in the visualizer shows the full 4×4 array running cycle-by-cycle.
+              Watch the activation diagonal form, the partial sums accumulate downward,
+              and the final results drain out the bottom. Every number is a real RTL signal.
+            </p>
+          </div>
+          <a href="/app" class={buttonVariants({ variant: "default", size: "lg" }) + " font-semibold gap-2"}>
+            Open visualizer
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- NAV LINKS -->
+    <section class="doc-section">
+      <div class="container doc-nav-links">
+        <a href="/docs/how-it-works" class="doc-nav-card doc-nav-card--prev">
+          <span class="doc-nav-label">Previous</span>
+          <span class="doc-nav-title">← How it works</span>
+          <span class="doc-nav-desc">The RTL→WASM→browser pipeline</span>
+        </a>
+        <a href="/docs/architecture" class="doc-nav-card doc-nav-card--next">
+          <span class="doc-nav-label">Next</span>
+          <span class="doc-nav-title">Architecture →</span>
+          <span class="doc-nav-desc">Monorepo layout, state contract, build flow</span>
+        </a>
+      </div>
+    </section>
+
+  </div>
+</Layout>
+
+<style>
+.page {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* ── Nav ── */
+.nav-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in oklch, var(--background) 85%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.container {
+  width: min(100%, 1080px);
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 56px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.logo-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal-lime);
+  background: color-mix(in oklch, var(--signal-lime) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--signal-lime) 28%, transparent);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-links a {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 5px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.nav-links a:hover,
+.nav-links a[aria-current="page"] {
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+}
+
+/* ── Doc hero ── */
+.doc-hero {
+  padding-block: 56px 48px;
+  background: color-mix(in oklch, var(--background) 96%, var(--signal-lime) 4%);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted-foreground);
+  margin-bottom: 20px;
+}
+
+.breadcrumb a {
+  color: var(--signal-cyan);
+  text-decoration: none;
+}
+.breadcrumb a:hover { text-decoration: underline; }
+
+.doc-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--foreground);
+  margin-bottom: 16px;
+  max-width: 720px;
+}
+
+.doc-lead {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+  max-width: 680px;
+}
+
+/* ── Doc section ── */
+.doc-section {
+  padding-block: 56px;
+}
+
+.doc-body {
+  max-width: 780px;
+}
+
+.doc-body h2 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  margin-bottom: 16px;
+}
+
+.doc-body h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  margin-top: 32px;
+  margin-bottom: 12px;
+}
+
+.doc-body p {
+  font-size: 0.94rem;
+  line-height: 1.82;
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+}
+
+.doc-body code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 8%, transparent);
+  border: 1px solid color-mix(in oklch, var(--signal-cyan) 18%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ── MAC equation ── */
+.equation-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface-deep);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-block: 20px;
+  font-family: var(--font-mono);
+}
+
+.eq-term {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--signal-lime);
+}
+
+.eq-op {
+  font-size: 1.1rem;
+  color: var(--muted-foreground);
+}
+
+/* ── Signal list ── */
+.signal-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+
+.signal-list li {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+}
+
+.signal-list li::before {
+  content: "› ";
+  color: var(--signal-amber);
+  font-family: var(--font-mono);
+}
+
+/* ── Array diagram ── */
+.array-diagram {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block: 24px;
+}
+
+.array-labels-col {
+  display: none;
+}
+
+.array-inner {
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+  display: inline-block;
+  max-width: 420px;
+}
+
+.col-labels {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.col-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-align: center;
+  padding: 6px 4px;
+  color: var(--muted-foreground);
+  border-right: 1px solid var(--hairline);
+}
+
+.col-label:last-child { border-right: none; }
+
+.pe-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+@keyframes cell-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pe-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 10px 6px;
+  border-right: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in oklch, var(--surface-deep) 70%, transparent);
+  opacity: 0;
+  animation: cell-in 250ms ease var(--d, 0ms) forwards;
+  min-height: 68px;
+}
+
+.pe-cell:nth-child(4n) { border-right: none; }
+.pe-cell:nth-child(n+13) { border-bottom: none; }
+
+.pe-cell.pe-active {
+  background: color-mix(in oklch, var(--signal-lime) 10%, var(--surface-deep));
+  border-color: color-mix(in oklch, var(--signal-lime) 40%, var(--hairline));
+}
+
+.pe-cell.pe-sub {
+  background: color-mix(in oklch, var(--signal-cyan) 6%, var(--surface-deep));
+}
+
+.pe-label {
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  line-height: 1;
+}
+
+.pe-cell.pe-active .pe-label { color: var(--signal-lime); }
+
+.pe-coord {
+  font-family: var(--font-mono);
+  font-size: 0.48rem;
+  color: oklch(0.42 0.01 215);
+  line-height: 1;
+}
+
+.pe-weight {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: var(--signal-amber);
+  line-height: 1;
+  margin-top: 3px;
+}
+
+.array-annotation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 420px;
+  padding: 4px 4px 0;
+}
+
+.ann-west, .ann-south {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--signal-cyan);
+}
+
+.ann-arrow {
+  font-size: 1rem;
+}
+
+/* ── Skew table ── */
+.skew-table-wrap {
+  overflow-x: auto;
+  margin-block: 20px;
+}
+
+.skew-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.skew-table th {
+  background: var(--surface-deep);
+  color: var(--muted-foreground);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+
+.skew-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted-foreground);
+}
+
+.skew-table tr:last-child td { border-bottom: none; }
+
+.act-cell { color: var(--signal-lime); }
+.zero-cell { color: oklch(0.38 0.01 215); }
+.cyc-cell { color: var(--signal-amber); font-weight: 600; }
+
+/* ── Cycle table ── */
+.cycle-table-wrap {
+  overflow-x: auto;
+  margin-block: 16px;
+}
+
+.cycle-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cycle-table th {
+  background: var(--surface-deep);
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+
+.cycle-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted-foreground);
+  font-size: 0.86rem;
+}
+
+.cycle-table tr:last-child td { border-bottom: none; }
+
+.cyc-num {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--signal-lime);
+  text-align: right;
+}
+
+.total-row td {
+  background: color-mix(in oklch, var(--signal-lime) 5%, transparent);
+  color: var(--foreground);
+}
+
+/* ── Callouts ── */
+.callout {
+  border-left: 3px solid;
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.86rem;
+  line-height: 1.7;
+  margin-block: 16px;
+  color: var(--muted-foreground);
+}
+
+.callout strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.callout--amber {
+  border-color: var(--signal-amber);
+  background: color-mix(in oklch, var(--signal-amber) 7%, transparent);
+  color: color-mix(in oklch, var(--signal-amber) 80%, var(--foreground));
+}
+
+.callout--cyan {
+  border-color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 7%, transparent);
+  color: color-mix(in oklch, var(--signal-cyan) 80%, var(--foreground));
+}
+
+/* ── Viz CTA ── */
+.viz-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  padding: 28px 32px;
+}
+
+.viz-cta-copy h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: 8px;
+}
+
+.viz-cta-copy p {
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--muted-foreground);
+  max-width: 480px;
+  margin: 0;
+}
+
+/* ── Doc nav links ── */
+.doc-nav-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.doc-nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  text-decoration: none;
+  max-width: 260px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.doc-nav-card:hover {
+  border-color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 4%, var(--surface));
+}
+
+.doc-nav-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.doc-nav-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--signal-cyan);
+}
+
+.doc-nav-desc {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 700px) {
+  .nav-links { display: none; }
+  .doc-nav-links { justify-content: flex-start; }
+  .viz-cta { flex-direction: column; }
+}
+</style>

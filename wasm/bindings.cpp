@@ -1,4 +1,4 @@
-// bindings.cpp — Emscripten embind glue for TinyTpuSim
+// bindings.cpp - Emscripten embind glue for TinyTpuSim
 //
 // Exposes TinyTpuSim to JavaScript.  Return types that are emscripten::val
 // pass through as plain JS objects/arrays matching the CycleState schema

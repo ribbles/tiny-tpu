@@ -1,5 +1,5 @@
 /**
- * tiling.ts — pure math for tiling a large matmul onto the 4×4 hardware.
+ * tiling.ts - pure math for tiling a large matmul onto the 4×4 hardware.
  *
  * Tiling strategy: row-major output tiles, accumulating over k-tiles.
  *
@@ -14,7 +14,7 @@
  * Each tile's MACs run on real RTL. The rule is that each RTL core
  * starts from psum=0 and produces its partial C tile.
  *
- * No React, no WASM imports here — pure data manipulation.
+ * No React, no WASM imports here - pure data manipulation.
  */
 
 /** Physical array dimension. Must match the RTL 4×4 hardware. */
@@ -22,9 +22,9 @@ export const TILE_SIZE = 4 as const;
 
 /** Identifies one tile pass in the schedule. */
 export interface TileCoord {
-  readonly outRow: number;  // output tile row index (0-based)
-  readonly outCol: number;  // output tile col index (0-based)
-  readonly kTile: number;   // inner-dimension (K) tile index (0-based)
+  readonly outRow: number; // output tile row index (0-based)
+  readonly outCol: number; // output tile col index (0-based)
+  readonly kTile: number; // inner-dimension (K) tile index (0-based)
 }
 
 /** Number of tiles needed to cover a dimension of length `dim`. */
@@ -64,7 +64,7 @@ export function extractATile(
   M: number,
   K: number,
   rowTile: number,
-  kTile: number,
+  kTile: number
 ): readonly number[] {
   const tile = new Array<number>(TILE_SIZE * TILE_SIZE).fill(0);
   for (let r = 0; r < TILE_SIZE; r++) {
@@ -90,7 +90,7 @@ export function extractBTile(
   K: number,
   N: number,
   kTile: number,
-  colTile: number,
+  colTile: number
 ): readonly number[] {
   const tile = new Array<number>(TILE_SIZE * TILE_SIZE).fill(0);
   for (let r = 0; r < TILE_SIZE; r++) {
@@ -117,7 +117,7 @@ export function assembleTiles(
     readonly result: readonly number[];
   }>,
   M: number,
-  N: number,
+  N: number
 ): readonly number[] {
   const C = new Array<number>(M * N).fill(0);
   for (const { coord, result } of partials) {
@@ -152,7 +152,7 @@ export function flattenMatrix(mat: readonly (readonly number[])[]): readonly num
 /** Build an N×N identity matrix (int values). */
 export function identityMatrix(n: number): number[][] {
   return Array.from({ length: n }, (_, i) =>
-    Array.from({ length: n }, (__, j) => (i === j ? 1 : 0)),
+    Array.from({ length: n }, (__, j) => (i === j ? 1 : 0))
   );
 }
 
