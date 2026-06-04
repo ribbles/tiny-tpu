@@ -1,10 +1,10 @@
-// tiny_tpu_top.sv — Top-level wrapper: systolic_array + controller + I/O buffers
+// tiny_tpu_top.sv - Top-level wrapper: systolic_array + controller + I/O buffers
 //
 // Usage:
 //   1. Set a_in[i][j] = A[i][j] and b_in[i][j] = B[i][j].
 //   2. Pulse start=1 for one cycle.
 //   3. Wait for done=1 (fires during the last drain cycle, 14 cycles after start
-//      for a 4×4 array — matches golden.py expected_cycles()).
+//      for a 4×4 array - matches golden.py expected_cycles()).
 //   4. Read c_buf[i][j] = (A @ B)[i][j].
 //
 // Result capture timing:
@@ -151,7 +151,7 @@ module tiny_tpu_top #(
                 end
             end
             // One cycle after `done` fires (done pre-edge = 1, meaning last drain just
-            // completed), psum_south[N-1] carries C[N-1][N-1] — the single element
+            // completed), psum_south[N-1] carries C[N-1][N-1] - the single element
             // whose capture window falls one cycle outside the drain phase.
             if (done)
                 c_buf[N-1][N-1] <= psum_south[N-1];

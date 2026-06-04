@@ -1,4 +1,4 @@
-// systolic_array.sv — 4×4 weight-stationary systolic array
+// systolic_array.sv - 4×4 weight-stationary systolic array
 //
 // Dataflow summary
 // ----------------
@@ -50,7 +50,7 @@ module systolic_array #(
     // Bottom-edge results (one per column); valid after the drain phase
     output logic signed [ACC_W-1:0]  psum_south [N],
 
-    // Debug bundle — all PE state for the top-level debug bus (row-major [i][j])
+    // Debug bundle - all PE state for the top-level debug bus (row-major [i][j])
     output logic signed [DATA_W-1:0] dbg_weight [N][N],
     output logic signed [DATA_W-1:0] dbg_act    [N][N],  // act_out per PE
     output logic signed [ACC_W-1:0]  dbg_psum   [N][N]   // psum_out per PE

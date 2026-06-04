@@ -1,4 +1,4 @@
-// pe.sv — Weight-stationary Processing Element (single MAC cell)
+// pe.sv - Weight-stationary Processing Element (single MAC cell)
 //
 // Each cycle:
 //   psum_out <= psum_in + weight_reg * act_in   (accumulate)
