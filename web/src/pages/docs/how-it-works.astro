@@ -1,0 +1,600 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { buttonVariants } from "@/components/ui/button";
+import "@/styles/global.css";
+
+const GITHUB_URL = "https://github.com/deaneeth/tiny-tpu";
+---
+
+<Layout
+  title="How It Works — TinyTPU"
+  description="The RTL→Verilator→WASM→browser pipeline explained. Real SystemVerilog compiled to WebAssembly, running live in your browser without any JavaScript shadow model."
+>
+  <div class="page">
+
+    <!-- NAV -->
+    <header class="nav-wrap">
+      <nav class="container nav" aria-label="Site navigation">
+        <a href="/" class="logo" aria-label="TinyTPU home">
+          <span class="logo-text">Tiny<strong>TPU</strong></span>
+          <span class="logo-badge">RTL</span>
+        </a>
+        <div class="nav-links" role="list">
+          <a href="/" role="listitem">Home</a>
+          <a href="/app" role="listitem">Visualizer</a>
+          <a href="/docs/how-it-works" role="listitem" aria-current="page">How it works</a>
+          <a href="/docs/the-systolic-array" role="listitem">Systolic array</a>
+          <a href="/docs/architecture" role="listitem">Architecture</a>
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" role="listitem">GitHub</a>
+        </div>
+        <a href="/app" class={buttonVariants({ variant: "default", size: "sm" }) + " font-semibold"}>Open instrument</a>
+      </nav>
+    </header>
+
+    <!-- HERO -->
+    <section class="doc-hero border-b border-hairline">
+      <div class="container">
+        <div class="breadcrumb">
+          <a href="/">Home</a>
+          <span aria-hidden="true">/</span>
+          <span>How it works</span>
+        </div>
+        <h1 class="doc-title">From RTL to pixels — no shadow model</h1>
+        <p class="doc-lead">
+          TinyTPU executes real SystemVerilog hardware in your browser via a four-stage
+          pipeline. Every number on screen is a live signal read directly from the compiled
+          RTL binary — nothing is reimplemented in JavaScript.
+        </p>
+      </div>
+    </section>
+
+    <!-- PIPELINE OVERVIEW -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>The four-stage pipeline</h2>
+        <p>
+          The core insight of TinyTPU is that Verilator and Emscripten, chained together,
+          turn a synthesizable hardware description into a WebAssembly module that any
+          browser can execute. The React visualizer is downstream of this — it reads
+          state out of the compiled binary, it does not reproduce the math.
+        </p>
+
+        <ol class="pipeline-steps" aria-label="Pipeline stages">
+          <li class="pipeline-step">
+            <div class="step-header">
+              <span class="step-num">01</span>
+              <h3 class="step-title">SystemVerilog RTL <code>rtl/*.sv</code></h3>
+            </div>
+            <div class="step-body">
+              <p>
+                The hardware is described in four synthesizable SystemVerilog files:
+                a processing element (<code>pe.sv</code>), a 4×4 grid of PEs
+                (<code>systolic_array.sv</code>), a control FSM
+                (<code>controller.sv</code>), and a top-level wrapper with a debug
+                output bus (<code>tiny_tpu_top.sv</code>).
+              </p>
+              <p>
+                The code uses only <code>always_ff</code> and <code>always_comb</code>
+                blocks — no <code>#delays</code>, no initial blocks in design modules,
+                no inferred latches. It is synthesizable: you can run it through any
+                FPGA synthesis tool without modification.
+              </p>
+              <div class="callout callout--amber">
+                <strong>Why synthesizability matters:</strong> a description that cannot
+                be mapped to real gates is not hardware — it is a simulation script.
+                TinyTPU uses no such shortcuts.
+              </div>
+            </div>
+          </li>
+
+          <li class="pipeline-step">
+            <div class="step-header">
+              <span class="step-num">02</span>
+              <h3 class="step-title">Verilator — <code>verilator --cc</code></h3>
+            </div>
+            <div class="step-body">
+              <p>
+                Verilator is a free, open-source tool that compiles SystemVerilog into
+                cycle-accurate C++. "Cycle-accurate" means the generated model produces
+                exactly the same output as the RTL would on real silicon for every clock
+                edge — it is not an approximation.
+              </p>
+              <p>
+                The C++ class <code>Vtiny_tpu_top</code> is the RTL translated into
+                software. The build script runs:
+              </p>
+              <pre class="code-block">verilator --cc rtl/pe.sv rtl/systolic_array.sv \
+          rtl/controller.sv rtl/tiny_tpu_top.sv \
+          --top-module tiny_tpu_top \
+          --Mdir wasm/obj_dir -Wall</pre>
+              <p>
+                This step also catches synthesizability violations. Any
+                <code>UNOPTFLAT</code>, <code>BLKANDNBLK</code>, or inferred-latch
+                warning fails the build — the RTL stays honest.
+              </p>
+            </div>
+          </li>
+
+          <li class="pipeline-step">
+            <div class="step-header">
+              <span class="step-num">03</span>
+              <h3 class="step-title">Emscripten — <code>em++ -O3 -lembind</code></h3>
+            </div>
+            <div class="step-body">
+              <p>
+                Emscripten is a complete C/C++ to WebAssembly compiler. The C++ harness
+                in <code>wasm/harness.cpp</code> owns a <code>Vtiny_tpu_top</code>
+                instance and exposes a <code>TinyTpuSim</code> class with methods
+                <code>loadA()</code>, <code>loadB()</code>, <code>start()</code>,
+                <code>step()</code>, and <code>run()</code>.
+              </p>
+              <p>
+                Emscripten's <em>embind</em> layer makes this class callable from
+                JavaScript without any manual FFI or memory management. The build
+                produces two files:
+              </p>
+              <ul class="file-list">
+                <li><code>web/public/tiny_tpu.mjs</code> — ES-module JavaScript loader</li>
+                <li><code>web/public/tiny_tpu.wasm</code> — the compiled hardware binary</li>
+              </ul>
+              <pre class="code-block">em++ -O3 -std=c++17 -lembind \
+     -I wasm/obj_dir -I "$VROOT/include" \
+     wasm/harness.cpp wasm/bindings.cpp \
+     wasm/obj_dir/Vtiny_tpu_top__ALL.cpp \
+     "$VROOT/include/verilated.cpp" \
+     -s MODULARIZE=1 -s EXPORT_ES6=1 \
+     -s ALLOW_MEMORY_GROWTH=1 \
+     -o web/public/tiny_tpu.mjs</pre>
+            </div>
+          </li>
+
+          <li class="pipeline-step">
+            <div class="step-header">
+              <span class="step-num">04</span>
+              <h3 class="step-title">React island — signal renderer</h3>
+            </div>
+            <div class="step-body">
+              <p>
+                The React island loads <code>tiny_tpu.mjs</code> inside a
+                <code>useEffect</code> — never at module top level, never during
+                server-side rendering. The Astro page uses
+                <code>client:only="react"</code> to guarantee the WASM never
+                runs at build time.
+              </p>
+              <p>
+                <code>wasm-loader.ts</code> wraps the embind API with TypeScript types
+                derived from the canonical state schema in
+                <code>docs/STATE_SCHEMA.md</code>. The <code>useTinyTpu</code> hook
+                calls <code>sim.run()</code> once and stores the full
+                <code>CycleState[]</code> array. The visualizer components render SVG
+                from the stored states — the WASM runs once, not on every animation frame.
+              </p>
+              <div class="callout callout--cyan">
+                <strong>SSR safety:</strong> Astro builds the page at compile time.
+                Any attempt to import WASM during build causes a
+                <code>window is not defined</code> error. The <code>client:only</code>
+                directive and the <code>useEffect</code>-gated import together prevent
+                this. Both guards must be present.
+              </div>
+            </div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- DEBUG OUTPUT BUS -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>The debug output bus</h2>
+        <p>
+          Reading internal signals from a compiled Verilator model is fragile — signal
+          names change across versions and synthesis optimizes them away. TinyTPU instead
+          exposes a stable, explicit debug output bus on the top-level module:
+        </p>
+        <pre class="code-block">// tiny_tpu_top.sv — top-level debug ports
+output logic [2:0]               dbg_fsm_state,  // controller FSM
+output logic signed [7:0]  [3:0][3:0] dbg_weight, // PE weight registers
+output logic signed [7:0]  [3:0][3:0] dbg_act,    // PE act_out (registered)
+output logic signed [31:0] [3:0][3:0] dbg_psum,   // PE psum_out
+output logic signed [7:0]  [3:0]      dbg_west,   // act_west inputs
+output logic signed [31:0] [3:0]      dbg_south   // psum_south outputs</pre>
+        <p>
+          The harness reads these ports after each <code>eval()</code> call and
+          populates a <code>CycleState</code> object. One field — <code>actIn</code>
+          for each PE — is derived rather than directly read:
+        </p>
+        <pre class="code-block">// actIn is not a direct register — derived in harness.cpp
+actIn[i][j] = (j == 0) ? dbg_west[i] : dbg_act[i][j-1]</pre>
+        <p>
+          This derivation is correct: <code>dbg_act[i][j-1]</code> is the registered
+          <code>act_out</code> of the PE to the left, which is exactly the activation
+          signal entering PE[i][j] on the current cycle.
+        </p>
+      </div>
+    </section>
+
+    <!-- GOLDEN VERIFICATION -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>Golden-model verification</h2>
+        <p>
+          The RTL is verified by comparing its output to a numpy reference model in
+          <code>sim/golden.py</code>. For 20+ random int8 matrix pairs across sizes
+          2×2 to 4×4, the cocotb test suite runs the RTL via Verilator's Python
+          bindings and asserts bit-exact equality with <code>numpy</code>'s integer
+          matmul:
+        </p>
+        <pre class="code-block">def matmul_golden(A, B):
+    return (A.astype(np.int64) @ B.astype(np.int64)).astype(np.int64)</pre>
+        <p>
+          If the RTL output does not match numpy for <em>every</em> random test case,
+          the pipeline does not proceed. A wrong matmul is a beautiful lie — and TinyTPU
+          refuses to tell it.
+        </p>
+        <div class="callout callout--lime">
+          <strong>Why numpy?</strong> Python's <code>numpy</code> integer arithmetic is
+          exact (no floating-point rounding). An int8 matmul with 4 accumulation terms
+          fits in int32 without overflow. The golden model is obviously correct, so any
+          mismatch means the RTL is wrong.
+        </div>
+      </div>
+    </section>
+
+    <!-- NAV LINKS -->
+    <section class="doc-section">
+      <div class="container doc-nav-links">
+        <a href="/docs/the-systolic-array" class="doc-nav-card doc-nav-card--next">
+          <span class="doc-nav-label">Next</span>
+          <span class="doc-nav-title">The systolic array →</span>
+          <span class="doc-nav-desc">Weight-stationary dataflow, skew, and why TPUs use this</span>
+        </a>
+      </div>
+    </section>
+
+  </div>
+</Layout>
+
+<style>
+.page {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* ── Nav ── */
+.nav-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in oklch, var(--background) 85%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.container {
+  width: min(100%, 1080px);
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 56px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.logo-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal-lime);
+  background: color-mix(in oklch, var(--signal-lime) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--signal-lime) 28%, transparent);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-links a {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 5px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.nav-links a:hover,
+.nav-links a[aria-current="page"] {
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+}
+
+/* ── Doc hero ── */
+.doc-hero {
+  padding-block: 56px 48px;
+  background: color-mix(in oklch, var(--background) 96%, var(--signal-cyan) 4%);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted-foreground);
+  margin-bottom: 20px;
+}
+
+.breadcrumb a {
+  color: var(--signal-cyan);
+  text-decoration: none;
+}
+
+.breadcrumb a:hover { text-decoration: underline; }
+
+.doc-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--foreground);
+  margin-bottom: 16px;
+  max-width: 700px;
+}
+
+.doc-lead {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+  max-width: 680px;
+}
+
+/* ── Doc section ── */
+.doc-section {
+  padding-block: 56px;
+}
+
+.doc-body {
+  max-width: 780px;
+}
+
+.doc-body h2 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  margin-bottom: 16px;
+}
+
+.doc-body h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.doc-body p {
+  font-size: 0.94rem;
+  line-height: 1.82;
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+}
+
+.doc-body p:last-child { margin-bottom: 0; }
+
+.doc-body code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 8%, transparent);
+  border: 1px solid color-mix(in oklch, var(--signal-cyan) 18%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.doc-body ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+/* ── Pipeline steps ── */
+.pipeline-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 32px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pipeline-step {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.pipeline-step:last-child { border-bottom: none; }
+
+.step-header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 20px 24px 0;
+}
+
+.step-num {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--signal-lime);
+  flex-shrink: 0;
+}
+
+.step-title {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.step-body {
+  padding: 12px 24px 24px calc(24px + 1.6rem + 14px);
+}
+
+.step-body p {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+  margin-bottom: 12px;
+}
+
+.step-body p:last-child { margin-bottom: 0; }
+
+/* ── File list ── */
+.file-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.file-list li::before {
+  content: "→ ";
+  color: var(--signal-amber);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+/* ── Code block ── */
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--signal-lime);
+  background: var(--surface-deep);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  white-space: pre;
+  margin-block: 14px;
+}
+
+/* ── Callouts ── */
+.callout {
+  border-left: 3px solid;
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.86rem;
+  line-height: 1.7;
+  margin-block: 14px;
+}
+
+.callout strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.callout--amber {
+  border-color: var(--signal-amber);
+  background: color-mix(in oklch, var(--signal-amber) 7%, transparent);
+  color: color-mix(in oklch, var(--signal-amber) 85%, var(--foreground));
+}
+
+.callout--cyan {
+  border-color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 7%, transparent);
+  color: color-mix(in oklch, var(--signal-cyan) 85%, var(--foreground));
+}
+
+.callout--lime {
+  border-color: var(--signal-lime);
+  background: color-mix(in oklch, var(--signal-lime) 7%, transparent);
+  color: color-mix(in oklch, var(--signal-lime) 85%, var(--foreground));
+}
+
+/* ── Doc nav links ── */
+.doc-nav-links {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+}
+
+.doc-nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  text-decoration: none;
+  max-width: 280px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.doc-nav-card:hover {
+  border-color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 4%, var(--surface));
+}
+
+.doc-nav-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.doc-nav-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--signal-cyan);
+  letter-spacing: -0.01em;
+}
+
+.doc-nav-desc {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 700px) {
+  .nav-links { display: none; }
+  .step-body { padding-left: 24px; }
+  .doc-nav-links { justify-content: flex-start; }
+}
+</style>
