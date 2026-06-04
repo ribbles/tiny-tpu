@@ -1,0 +1,33 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import PEGridDemo from "@/components/PEGridDemo";
+import "@/styles/global.css";
+---
+
+<Layout
+  title="PEGrid Test — TinyTPU"
+  description="P7-T1 verification: 4×4 systolic array PE grid rendering with hardcoded CycleState snapshots."
+>
+  <main class="min-h-screen flex flex-col items-center gap-8 px-4 py-12">
+    <header class="text-center space-y-2">
+      <h1 class="text-2xl font-bold tracking-tight">
+        Tiny<span class="text-primary">TPU</span>
+        <span class="text-muted-foreground font-normal"> / PE grid test</span>
+      </h1>
+      <p class="text-sm text-muted-foreground max-w-sm">
+        P7-T1: 4×4 PE grid bound to hardcoded CycleState snapshots.
+        Click the snapshot buttons to exercise all four PE color states.
+      </p>
+    </header>
+
+    <div class="w-full max-w-2xl rounded-lg border border-border bg-card p-6">
+      <PEGridDemo client:only="react" />
+    </div>
+
+    <footer class="text-xs text-muted-foreground">
+      <a href="/smoke" class="hover:text-foreground transition-colors">← smoke test</a>
+      {" · "}
+      <a href="/" class="hover:text-foreground transition-colors">home</a>
+    </footer>
+  </main>
+</Layout>
