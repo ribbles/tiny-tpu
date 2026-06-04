@@ -1,15 +1,15 @@
 /**
- * wasm-loader.ts — browser-only loader for the TinyTPU WASM module.
+ * wasm-loader.ts - browser-only loader for the TinyTPU WASM module.
  *
  * RULE: loadTinyTpu() must only be called from the browser.
  * It throws immediately if window is undefined. Always call inside useEffect
- * or a client:only="react" island — never at module top level in SSR paths.
+ * or a client:only="react" island - never at module top level in SSR paths.
  */
 
 import type { CycleState } from "./state-schema";
 
 // ---------------------------------------------------------------------------
-// Raw embind interface — mirrors TinyTpuSim in wasm/harness.cpp + bindings.cpp
+// Raw embind interface - mirrors TinyTpuSim in wasm/harness.cpp + bindings.cpp
 // ---------------------------------------------------------------------------
 
 interface RawSim {
@@ -56,7 +56,7 @@ export interface TinyTpuWrapper {
   destroy(): void;
 }
 
-// Module singleton — reused across multiple TinyTpuWrapper instances
+// Module singleton - reused across multiple TinyTpuWrapper instances
 let _module: RawModule | null = null;
 
 export async function loadTinyTpu(): Promise<TinyTpuWrapper> {
@@ -65,7 +65,7 @@ export async function loadTinyTpu(): Promise<TinyTpuWrapper> {
   }
 
   if (_module === null) {
-    // /tiny_tpu.mjs lives in public/ — served from the web root at runtime,
+    // /tiny_tpu.mjs lives in public/ - served from the web root at runtime,
     // declared external in astro.config.mjs rollupOptions.
     //
     // Vite 6 blocks direct dynamic imports of public/ files even with

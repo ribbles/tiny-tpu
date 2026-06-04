@@ -1,5 +1,6 @@
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
+import sitemap from "@astrojs/sitemap";
 import tailwindcss from "@tailwindcss/vite";
 import { createReadStream } from "fs";
 import { join, dirname } from "path";
@@ -36,7 +37,8 @@ const wasmJsPassthrough = {
 };
 
 export default defineConfig({
-  integrations: [react()],
+  site: "https://tiny-tpu.vercel.app",
+  integrations: [react(), sitemap()],
   vite: {
     plugins: [tailwindcss(), wasmJsPassthrough],
     optimizeDeps: {
@@ -45,7 +47,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         // /tiny_tpu.mjs lives in public/ and is served at runtime from the web
-        // root — Rollup must not attempt to bundle or resolve it at build time.
+        // root - Rollup must not attempt to bundle or resolve it at build time.
         external: ["/tiny_tpu.mjs"],
       },
     },
