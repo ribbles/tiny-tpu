@@ -1,5 +1,5 @@
 /**
- * Controls — pure presentational transport bar for the TinyTPU visualizer.
+ * Controls - pure presentational transport bar for the TinyTPU visualizer.
  *
  * Renders:
  *   - FSM state badge (color-coded by phase)
@@ -8,7 +8,7 @@
  *   - Transport      [Reset] [◀ Step] [▶/⏸] [Step ▶]
  *   - Speed selector [0.5×] [1×] [2×] [4×]
  *
- * Pure props + callbacks — no WASM, no state ownership.
+ * Pure props + callbacks - no WASM, no state ownership.
  */
 
 import {
@@ -83,22 +83,20 @@ export function Controls({
           {fsmState ? (
             <span
               className={cn(
-                "rounded border px-2 py-0.5 text-xs font-mono",
+                "inline-block min-w-[10rem] rounded border px-2 py-0.5 text-center text-xs font-mono",
                 FSM_STYLES[fsmState],
               )}
             >
               {fsmState}
             </span>
           ) : (
-            <span className="rounded border border-border px-2 py-0.5 text-xs font-mono text-muted-foreground">
-              {isLoaded ? "—" : "Loading…"}
+            <span className="inline-block min-w-[10rem] rounded border border-border px-2 py-0.5 text-center text-xs font-mono text-muted-foreground">
+              {isLoaded ? "-" : "Loading…"}
             </span>
           )}
-          <span className="text-xs font-mono text-muted-foreground">
+          <span className="tabular-nums text-xs font-mono text-muted-foreground">
             Cycle{" "}
-            <span className="text-foreground">
-              {displayCycle}
-            </span>
+            <span className="text-foreground">{displayCycle}</span>
             {" / "}
             {displayTotal}
           </span>
@@ -110,6 +108,7 @@ export function Controls({
           {SPEED_OPTIONS.map((s) => (
             <button
               key={s}
+              type="button"
               onClick={() => onSpeedChange(s)}
               disabled={disabled}
               className={cn(
@@ -196,7 +195,7 @@ export function Controls({
           <ChevronRight className="h-4 w-4" />
         </Button>
 
-        {/* Progress indicator — subtle dots for each cycle */}
+        {/* Progress indicator - fixed-width dots, color-only transitions */}
         {isLoaded && totalCycles > 0 && (
           <div
             className="ml-auto flex items-center gap-0.5"
@@ -206,12 +205,12 @@ export function Controls({
               <span
                 key={i}
                 className={cn(
-                  "inline-block h-1 rounded-full transition-all duration-150",
+                  "inline-block h-1 w-1.5 rounded-full transition-colors duration-100",
                   i === cycleIdx
-                    ? "w-3 bg-primary"
+                    ? "bg-primary"
                     : i < cycleIdx
-                      ? "w-1 bg-primary/40"
-                      : "w-1 bg-muted",
+                      ? "bg-primary/40"
+                      : "bg-muted",
                 )}
               />
             ))}

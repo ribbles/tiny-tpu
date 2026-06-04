@@ -1,11 +1,11 @@
 /**
- * LevelTabs — progressive disclosure tabs for the TinyTPU visualizer.
+ * LevelTabs - progressive disclosure tabs for the TinyTPU visualizer.
  *
  * Three levels of detail, each with a plain-English explainer:
  *
- *   L1 "One Cell"  — zoom into a single PE; watch the MAC equation tick.
- *   L2 "The Array" — the full 4×4 grid animation (default view).
- *   L3 "Tiling"    — how matrices > 4×4 are split into real RTL tile-passes.
+ *   L1 "One Cell"  - zoom into a single PE; watch the MAC equation tick.
+ *   L2 "The Array" - the full 4×4 grid animation (default view).
+ *   L3 "Tiling"    - how matrices > 4×4 are split into real RTL tile-passes.
  *
  * Each explainer is brief (2–3 sentences), hardware-accurate, and jargon-light.
  * L3 is opt-in (a tab); L2 stays the default.
@@ -80,9 +80,9 @@ export function LevelTabs({
   return (
     <Tabs defaultValue="l2" className="space-y-3">
       <TabsList className="w-full justify-start">
-        <TabsTrigger value="l1">L1 — One Cell</TabsTrigger>
-        <TabsTrigger value="l2">L2 — The Array</TabsTrigger>
-        <TabsTrigger value="l3">L3 — Tiling</TabsTrigger>
+        <TabsTrigger value="l1">L1 - One Cell</TabsTrigger>
+        <TabsTrigger value="l2">L2 - The Array</TabsTrigger>
+        <TabsTrigger value="l3">L3 - Tiling</TabsTrigger>
       </TabsList>
 
       {/* ── L1: One Cell ──────────────────────────────────────────────────── */}
@@ -149,7 +149,7 @@ export function LevelTabs({
       <TabsContent value="l3" className="space-y-4">
         <Explainer>
           A 4×4 array can only hold 16 weights. For larger matrices, the multiply
-          is split into 4×4 tiles processed in multiple passes — each pass runs
+          is split into 4×4 tiles processed in multiple passes - each pass runs
           entirely on the real RTL hardware. Partial results from passes that share
           the same output tile are summed in TypeScript (orchestration, not
           matmul). Try an 8×8 input: it becomes eight RTL passes and the assembled

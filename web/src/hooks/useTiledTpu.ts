@@ -1,5 +1,5 @@
 /**
- * useTiledTpu — orchestrates multiple 4×4 WASM passes for matrices > 4×4.
+ * useTiledTpu - orchestrates multiple 4×4 WASM passes for matrices > 4×4.
  *
  * Strategy:
  *   1. Build a tile schedule via tilingSchedule(M, K, N).
@@ -35,7 +35,7 @@ export interface TiledPass {
   readonly aFlat: readonly number[];
   /** 4×4 B sub-tile that was loaded as stationary weights (flat row-major). */
   readonly bFlat: readonly number[];
-  /** Per-cycle RTL state snapshots from run() — typically 14–15 entries. */
+  /** Per-cycle RTL state snapshots from run() - typically 14–15 entries. */
   readonly states: readonly CycleState[];
   /** 4×4 partial result from this single RTL pass (flat row-major, int32). */
   readonly result: readonly number[];
@@ -58,7 +58,7 @@ export interface UseTiledTpuReturn {
   readonly runTiled: (
     size: number,
     aFlat: readonly number[],
-    bFlat: readonly number[],
+    bFlat: readonly number[]
   ) => Promise<void>;
 }
 
@@ -88,7 +88,7 @@ export function useTiledTpu(): UseTiledTpuReturn {
           const aTile = extractATile(aFlat, size, size, coord.outRow, coord.kTile);
           const bTile = extractBTile(bFlat, size, size, coord.kTile, coord.outCol);
 
-          // Each pass gets a fresh sim instance — weights reset for every tile.
+          // Each pass gets a fresh sim instance - weights reset for every tile.
           const tpu = await loadTinyTpu();
           let states: CycleState[];
           let result: readonly number[];
@@ -126,7 +126,7 @@ export function useTiledTpu(): UseTiledTpuReturn {
         setIsRunning(false);
       }
     },
-    [],
+    []
   );
 
   return { passes, assembledC, matSize, isRunning, error, runTiled };

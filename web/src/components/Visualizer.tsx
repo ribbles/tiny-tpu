@@ -1,5 +1,5 @@
 /**
- * Visualizer — the main client-only island for TinyTPU.
+ * Visualizer - the main client-only island for TinyTPU.
  *
  * Owns:
  *   - MatrixInput: lets the user edit matrices A and B (2×2..8×8).
@@ -16,7 +16,7 @@
  *       loadTinyTpu() (and framer-motion) must never run during SSR/build.
  */
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { LevelTabs } from "@/components/LevelTabs";
 import { MatrixInput } from "@/components/MatrixInput";
 import { useTinyTpu } from "@/hooks/useTinyTpu";
@@ -64,9 +64,14 @@ export default function Visualizer() {
   const tpu = useTinyTpu();
   const tiledTpu = useTiledTpu();
 
+  // Track the logical size of the last native run so MatrixInput only shows
+  // the C result when it matches the currently displayed size.
+  const [lastNativeRunSize, setLastNativeRunSize] = useState<number | null>(null);
+
   const handleRun = useCallback(
     (size: number, aFlat: readonly number[], bFlat: readonly number[]) => {
       if (size <= 4) {
+        setLastNativeRunSize(size);
         const a4 = padTo4x4Flat(aFlat, size);
         const b4 = padTo4x4Flat(bFlat, size);
         void tpu.runWith(a4, b4);
@@ -84,13 +89,17 @@ export default function Visualizer() {
   // Show skeleton only while the initial native load is happening
   if (!tpu.isLoaded && !tpu.error) return <LoadingSkeleton />;
 
-  const isRunning = tiledTpu.isRunning;
+  const isRunning = tiledTpu.isRunning || tpu.isNativeRunning;
 
   return (
     <div className="space-y-4">
       <MatrixInput
         isRunning={isRunning}
         onRun={handleRun}
+        nativeResult={tpu.result}
+        lastNativeRunSize={lastNativeRunSize}
+        tiledResult={tiledTpu.assembledC}
+        tiledResultSize={tiledTpu.matSize}
       />
 
       <LevelTabs

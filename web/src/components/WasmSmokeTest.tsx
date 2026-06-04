@@ -1,5 +1,5 @@
 /**
- * WasmSmokeTest — client-only React island.
+ * WasmSmokeTest - client-only React island.
  *
  * Loads the TinyTPU WASM module, runs a fixed 3×3 matmul (zero-padded to 4×4),
  * and verifies the result against the golden expected values computed from
@@ -12,7 +12,7 @@
 import { useEffect, useState } from "react";
 
 // ---------------------------------------------------------------------------
-// Fixed test case — 3×3 matmul zero-padded to the 4×4 hardware size
+// Fixed test case - 3×3 matmul zero-padded to the 4×4 hardware size
 //
 // A = [[1,2,3],[4,5,6],[7,8,9]]   padded row-major → flat[16]
 // B = [[9,8,7],[6,5,4],[3,2,1]]   padded row-major → flat[16]
@@ -77,8 +77,8 @@ function StatusBadge({ status }: { status: Status }) {
   };
   const labels: Record<Status, string> = {
     loading: "Loading WASM…",
-    pass: "✓ PASS — result matches expected",
-    fail: "✗ FAIL — result mismatch",
+    pass: "✓ PASS - result matches expected",
+    fail: "✗ FAIL - result mismatch",
     error: "✗ ERROR",
   };
   return (
@@ -105,7 +105,7 @@ export default function WasmSmokeTest() {
 
     async function runSmoke() {
       try {
-        // Dynamic import of the loader — keeps this import out of SSR paths.
+        // Dynamic import of the loader - keeps this import out of SSR paths.
         // The loader itself never runs during SSR; belt-and-suspenders safety.
         const { loadTinyTpu } = await import("../lib/wasm-loader");
         const tpu = await loadTinyTpu();

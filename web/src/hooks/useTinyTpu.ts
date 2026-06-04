@@ -1,5 +1,5 @@
 /**
- * useTinyTpu — owns the WASM simulator and the full per-cycle playback engine.
+ * useTinyTpu - owns the WASM simulator and the full per-cycle playback engine.
  *
  * Lifecycle:
  *   1. On mount, loads the WASM module and runs the default matrices immediately.
@@ -32,19 +32,9 @@ export const SPEED_OPTIONS = [0.5, 1, 2, 4] as const;
 export type SpeedOption = (typeof SPEED_OPTIONS)[number];
 
 /** Default 3×3 matmul zero-padded to the 4×4 hardware width. */
-export const DEFAULT_A_FLAT = [
-  1, 2, 3, 0,
-  4, 5, 6, 0,
-  7, 8, 9, 0,
-  0, 0, 0, 0,
-] as const;
+export const DEFAULT_A_FLAT = [1, 2, 3, 0, 4, 5, 6, 0, 7, 8, 9, 0, 0, 0, 0, 0] as const;
 
-export const DEFAULT_B_FLAT = [
-  9, 8, 7, 0,
-  6, 5, 4, 0,
-  3, 2, 1, 0,
-  0, 0, 0, 0,
-] as const;
+export const DEFAULT_B_FLAT = [9, 8, 7, 0, 6, 5, 4, 0, 3, 2, 1, 0, 0, 0, 0, 0] as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,6 +46,14 @@ export interface UseTinyTpuReturn {
   readonly isPlaying: boolean;
   /** True once the WASM has loaded and the first run() completed. */
   readonly isLoaded: boolean;
+  /** True while a native runWith() call is in-flight (for button feedback). */
+  readonly isNativeRunning: boolean;
+  /**
+   * Flat 4×4 row-major result from the last completed native run (int32).
+   * Null until the first run completes. The first size×size values are the
+   * logical result; remaining cells are zero-padded by the hardware.
+   */
+  readonly result: readonly number[] | null;
   readonly error: string | null;
   readonly speed: SpeedOption;
 
@@ -73,10 +71,7 @@ export interface UseTinyTpuReturn {
   readonly scrubTo: (idx: number) => void;
   readonly setSpeed: (speed: SpeedOption) => void;
   /** Re-run the simulation with new matrices (resets playback). */
-  readonly runWith: (
-    aFlat: readonly number[],
-    bFlat: readonly number[],
-  ) => Promise<void>;
+  readonly runWith: (aFlat: readonly number[], bFlat: readonly number[]) => Promise<void>;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -87,6 +82,8 @@ export function useTinyTpu(): UseTinyTpuReturn {
   const [cycleIdx, setCycleIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isNativeRunning, setIsNativeRunning] = useState(false);
+  const [result, setResult] = useState<readonly number[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [speed, setSpeedState] = useState<SpeedOption>(1);
 
@@ -97,6 +94,14 @@ export function useTinyTpu(): UseTinyTpuReturn {
   const speedRef = useRef<SpeedOption>(1);
   const rafRef = useRef(0);
   const lastAdvanceRef = useRef(0);
+  // Index of the DONE cycle - stop auto-play here so the user sees results,
+  // not the following IDLE cycle where all psums are 0.
+  const doneIdxRef = useRef(-1);
+  // Tracks whether the initial silent load has already completed. The first
+  // runWith() call is the auto-run on mount - it populates the animation but
+  // does NOT write to `result` so the C column stays blank until the user
+  // explicitly clicks Run.
+  const hasUserRunRef = useRef(false);
 
   // ── rAF tick ───────────────────────────────────────────────────────────────
   const tick = useCallback((timestamp: number) => {
@@ -106,10 +111,15 @@ export function useTinyTpu(): UseTinyTpuReturn {
     if (timestamp - lastAdvanceRef.current >= interval) {
       lastAdvanceRef.current = timestamp;
       const next = cycleIdxRef.current + 1;
-      if (next >= statesRef.current.length) {
-        // Reached end of trace — stop playback, stay on last frame
+      // Stop at the DONE cycle if known, otherwise at the last frame.
+      // This keeps the PE grid showing the final result state instead of
+      // stopping at the subsequent IDLE cycle where all psums reset to 0.
+      const stopAt = doneIdxRef.current >= 0 ? doneIdxRef.current : statesRef.current.length - 1;
+      if (next >= stopAt) {
         isPlayingRef.current = false;
         setIsPlaying(false);
+        cycleIdxRef.current = stopAt;
+        setCycleIdx(stopAt);
         return;
       }
       cycleIdxRef.current = next;
@@ -129,8 +139,9 @@ export function useTinyTpu(): UseTinyTpuReturn {
 
   const play = useCallback(() => {
     if (statesRef.current.length === 0) return;
-    // If at end, restart from the beginning
-    if (cycleIdxRef.current >= statesRef.current.length - 1) {
+    const stopAt = doneIdxRef.current >= 0 ? doneIdxRef.current : statesRef.current.length - 1;
+    // If at or past the stop point, restart from the beginning
+    if (cycleIdxRef.current >= stopAt) {
       cycleIdxRef.current = 0;
       setCycleIdx(0);
     }
@@ -171,14 +182,11 @@ export function useTinyTpu(): UseTinyTpuReturn {
   const scrubTo = useCallback(
     (idx: number) => {
       pause();
-      const clamped = Math.max(
-        0,
-        Math.min(idx, Math.max(0, statesRef.current.length - 1)),
-      );
+      const clamped = Math.max(0, Math.min(idx, Math.max(0, statesRef.current.length - 1)));
       cycleIdxRef.current = clamped;
       setCycleIdx(clamped);
     },
-    [pause],
+    [pause]
   );
 
   const setSpeed = useCallback((s: SpeedOption) => {
@@ -191,34 +199,54 @@ export function useTinyTpu(): UseTinyTpuReturn {
   const runWith = useCallback(
     async (aFlat: readonly number[], bFlat: readonly number[]) => {
       pause();
-      setIsLoaded(false);
       setError(null);
-      setStates([]);
-      statesRef.current = [];
+      setIsNativeRunning(true); // sync - shows "Running…" on the button immediately
       cycleIdxRef.current = 0;
       setCycleIdx(0);
 
       try {
         // Dynamic import keeps this out of SSR paths entirely
         const { loadTinyTpu } = await import("@/lib/wasm-loader");
-        const tpu = await loadTinyTpu();
+        const sim = await loadTinyTpu();
         try {
-          tpu.reset();
-          tpu.loadA(aFlat);
-          tpu.loadB(bFlat);
-          tpu.start();
-          const allStates = tpu.run();
+          sim.reset();
+          sim.loadA(aFlat);
+          sim.loadB(bFlat);
+          sim.start();
+          const allStates = sim.run();
+          const runResult = sim.getResult(); // must read before destroy()
           statesRef.current = allStates;
+          doneIdxRef.current = allStates.findIndex((s) => s.done);
           setStates(allStates);
+          // Capture BEFORE flipping so both checks see the same value.
+          const isUserRun = hasUserRunRef.current;
+          if (!isUserRun) hasUserRunRef.current = true; // flip after initial load
+
+          // Only show C result and auto-play on user-triggered runs.
+          // The initial silent load populates the animation but leaves the C
+          // column blank and playback paused - the user controls both.
+          if (isUserRun) {
+            setResult(runResult);
+          }
           setIsLoaded(true);
+          setIsNativeRunning(false);
+          if (isUserRun) {
+            cycleIdxRef.current = 0;
+            isPlayingRef.current = true;
+            setIsPlaying(true);
+            lastAdvanceRef.current = performance.now();
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = requestAnimationFrame(tick);
+          }
         } finally {
-          tpu.destroy();
+          sim.destroy();
         }
       } catch (e) {
+        setIsNativeRunning(false);
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [pause],
+    [pause, tick]
   );
 
   // ── Effects ────────────────────────────────────────────────────────────────
@@ -235,8 +263,7 @@ export function useTinyTpu(): UseTinyTpuReturn {
       if (document.visibilityState === "hidden") pause();
     }
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
   }, [pause]);
 
   // Cleanup on unmount
@@ -251,6 +278,8 @@ export function useTinyTpu(): UseTinyTpuReturn {
     cycleIdx,
     isPlaying,
     isLoaded,
+    isNativeRunning,
+    result,
     error,
     speed,
     play,
