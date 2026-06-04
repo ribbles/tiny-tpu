@@ -39,6 +39,9 @@ export default defineConfig({
   integrations: [react()],
   vite: {
     plugins: [tailwindcss(), wasmJsPassthrough],
+    optimizeDeps: {
+      include: ["framer-motion"],
+    },
     build: {
       rollupOptions: {
         // /tiny_tpu.mjs lives in public/ and is served at runtime from the web
