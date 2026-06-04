@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tiny-tpu.vercel.app/sitemap-index.xml
