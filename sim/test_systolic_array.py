@@ -3,16 +3,16 @@ cocotb wiring test for systolic_array.sv (no controller).
 
 Tests
 -----
-weight_mapping_check  — load an asymmetric (non-symmetric) weight matrix;
+weight_mapping_check  - load an asymmetric (non-symmetric) weight matrix;
                         verify every dbg_weight[i][j] holds B[i][j], not B[j][i].
                         A row/col transposition bug in the generate loop is caught here.
 
-wiring_basic          — identity weights; drive act_west = [1,1,1,1] for one cycle,
+wiring_basic          - identity weights; drive act_west = [1,1,1,1] for one cycle,
                         then zeros; verify psum_south = [1,1,1,1] after exactly 3 more
                         cycles.  Tests that all four diagonal PE paths and their drain
                         chains are wired correctly end-to-end.
 
-single_row_path       — identity weights; drive only act_west[0]=5, rest=0;
+single_row_path       - identity weights; drive only act_west[0]=5, rest=0;
                         verify psum_south[0]=5 at T=3 and psum_south[1..3]=0.
                         Isolates the row-0 → column-0 path and confirms cross-column
                         leakage does not occur.
@@ -115,7 +115,7 @@ async def weight_mapping_check(dut):
 
     Pattern: B[i][j] = i*N + j + 1 (row-major, 1..16).
     If the generate loop has i and j swapped, dbg_weight[i][j] would be
-    j*N + i + 1 instead — this test detects that transposition.
+    j*N + i + 1 instead - this test detects that transposition.
     """
     cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
@@ -158,7 +158,7 @@ async def wiring_basic(dut):
             f"psum_south[{j}] at T=0: expected 0, got {sv_signed(dut.psum_south[j])}"
         )
 
-    # T=1, T=2: drain in flight — all columns still zero
+    # T=1, T=2: drain in flight - all columns still zero
     await clock_cycle(dut, [0, 0, 0, 0])
     for j in range(N):
         assert sv_signed(dut.psum_south[j]) == 0, (
@@ -191,7 +191,7 @@ async def single_row_path(dut):
     Path: act_west[0]=5 → PE[0][0] (weight=1) → psum_v[1..4][0] → psum_south[0]=5
     Drain time: N-1 = 3 cycles.
 
-    psum_south[1..3] must remain 0 throughout — any cross-column leakage is caught.
+    psum_south[1..3] must remain 0 throughout - any cross-column leakage is caught.
     """
     cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
     await reset_dut(dut)
