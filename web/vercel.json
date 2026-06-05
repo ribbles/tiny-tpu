@@ -1,4 +1,8 @@
 {
+  "framework": "astro",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist",
   "headers": [
     {
       "source": "/tiny_tpu.wasm",
