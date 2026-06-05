@@ -19,25 +19,91 @@ const FSM_LABELS: Record<string, string> = {
 };
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
+// Mirrors PEGrid's exact SVG layout (same CELL/GAP/offsets) so the page is
+// visually "complete" at FCP (~0.8 s) instead of showing an empty spinner for
+// the 7 s it takes WASM to download. This is the primary fix for Speed Index.
+
+const SK_CELL = 88;
+const SK_GAP = 10;
+const SK_N = 4;
+const SK_WEST_W = 70;
+const SK_TOP_H = 40;
+const SK_SOUTH_H = 64;
+const SK_GRID = SK_N * SK_CELL + (SK_N - 1) * SK_GAP; // 382
+const SK_W = SK_WEST_W + SK_GRID + 12; // 464
+const SK_H = SK_TOP_H + SK_GRID + SK_SOUTH_H; // 486
 
 function Skeleton() {
+  const cells = Array.from({ length: SK_N }, (_, row) =>
+    Array.from({ length: SK_N }, (_, col) => ({
+      x: SK_WEST_W + col * (SK_CELL + SK_GAP),
+      y: SK_TOP_H + row * (SK_CELL + SK_GAP),
+      delay: ((row + col) % 4) * 0.25,
+    })),
+  ).flat();
+
   return (
-    <div
-      className="flex flex-col items-center justify-center gap-3 animate-pulse"
-      style={{ minHeight: 420 }}
-      aria-busy="true"
-    >
-      <div
-        className="h-6 w-6 rounded-full border-2 border-t-transparent animate-spin"
-        style={{ borderColor: "var(--signal-cyan)", borderTopColor: "transparent" }}
-        role="status"
-      />
-      <p
-        className="font-mono text-[11px] uppercase tracking-[0.12em]"
-        style={{ color: "var(--signal-cyan)" }}
+    <div style={{ minHeight: 420 }} aria-busy="true" aria-label="Loading simulator">
+      <svg
+        viewBox={`0 0 ${SK_W} ${SK_H}`}
+        style={{ width: "100%", maxWidth: SK_W, display: "block", margin: "0 auto" }}
+        aria-hidden="true"
       >
-        Compiling RTL → WASM
-      </p>
+        <defs>
+          <style>{`
+            @keyframes tpu-sk-pulse {
+              0%,100%{opacity:.55} 50%{opacity:.9}
+            }
+            .tpu-sk { animation: tpu-sk-pulse 1.8s ease-in-out infinite; }
+          `}</style>
+        </defs>
+
+        {/* 4×4 PE cells — same positions as the live PEGrid */}
+        {cells.map(({ x, y, delay }, i) => (
+          <rect
+            key={i}
+            className="tpu-sk"
+            style={{ animationDelay: `${delay}s` }}
+            x={x}
+            y={y}
+            width={SK_CELL}
+            height={SK_CELL}
+            rx={4}
+            fill="var(--pe-idle)"
+          />
+        ))}
+
+        {/* West-edge activation-input placeholders */}
+        {Array.from({ length: SK_N }, (_, row) => {
+          const cy = SK_TOP_H + row * (SK_CELL + SK_GAP) + SK_CELL / 2;
+          return (
+            <g key={row} opacity={0.25}>
+              <circle cx={SK_WEST_W - 20} cy={cy} r={6} fill="var(--muted-foreground)" />
+              <line
+                x1={SK_WEST_W - 14}
+                y1={cy}
+                x2={SK_WEST_W - 3}
+                y2={cy}
+                stroke="var(--muted-foreground)"
+                strokeWidth={1.5}
+              />
+            </g>
+          );
+        })}
+
+        {/* Loading label — same vertical position as PEGrid south outputs */}
+        <text
+          x={SK_WEST_W + SK_GRID / 2}
+          y={SK_TOP_H + SK_GRID + SK_SOUTH_H - 16}
+          textAnchor="middle"
+          fontFamily="var(--font-geist-mono, monospace)"
+          fontSize={10}
+          fill="var(--muted-foreground)"
+          opacity={0.45}
+        >
+          Compiling RTL → WASM
+        </text>
+      </svg>
     </div>
   );
 }
