@@ -1,0 +1,37 @@
+name: WASM Build
+
+on:
+  push:
+    paths:
+      - 'rtl/**'
+      - 'wasm/**'
+      - '.github/workflows/wasm.yml'
+  pull_request:
+    paths:
+      - 'rtl/**'
+      - 'wasm/**'
+      - '.github/workflows/wasm.yml'
+
+jobs:
+  wasm-build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Verilator and build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y verilator build-essential
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+
+      - name: Build WASM
+        run: bash wasm/build.sh
+
+      - name: Assert artifacts produced
+        run: |
+          test -f web/public/tiny_tpu.mjs || (echo "ERROR: tiny_tpu.mjs not produced" && exit 1)
+          test -f web/public/tiny_tpu.wasm || (echo "ERROR: tiny_tpu.wasm not produced" && exit 1)
+          echo "WASM artifacts verified: $(du -sh web/public/tiny_tpu.wasm | cut -f1) wasm"

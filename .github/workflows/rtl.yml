@@ -1,0 +1,79 @@
+name: RTL CI
+
+on:
+  push:
+    paths:
+      - 'rtl/**'
+      - 'sim/**'
+      - '.github/workflows/rtl.yml'
+  pull_request:
+    paths:
+      - 'rtl/**'
+      - 'sim/**'
+      - '.github/workflows/rtl.yml'
+
+jobs:
+  rtl-ci:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # cocotb 2.x requires Verilator >= 5.036; the ubuntu-24.04 apt package
+      # is only 5.020, so we build from source and cache by version tag.
+      - name: Cache Verilator build
+        id: cache-verilator
+        uses: actions/cache@v4
+        with:
+          path: ~/verilator-install
+          key: verilator-v5.036-ubuntu-24.04
+
+      - name: Build Verilator v5.036 from source
+        if: steps.cache-verilator.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y autoconf flex bison libfl2 libfl-dev help2man perl
+          git clone --depth 1 --branch v5.036 https://github.com/verilator/verilator.git /tmp/verilator
+          cd /tmp/verilator
+          autoconf
+          ./configure --prefix="$HOME/verilator-install"
+          make -j$(nproc)
+          make install
+
+      - name: Add Verilator to PATH
+        run: echo "$HOME/verilator-install/bin" >> $GITHUB_PATH
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps
+        run: pip install cocotb numpy pytest
+
+      - name: Lint RTL
+        run: verilator --lint-only -Wall rtl/*.sv
+
+      - name: Golden model tests
+        run: pytest sim/golden.py -q
+
+      # Each suite gets its own SIM_BUILD directory. cocotb does not detect a
+      # TOPLEVEL change across runs sharing the same sim_build/ — it reuses the
+      # previous binary, which causes "root handle not found" at runtime.
+      - name: cocotb — PE
+        working-directory: sim
+        run: make MODULE=test_pe TOPLEVEL=pe WAVES=0 SIM_BUILD=sim_build/pe
+
+      - name: cocotb — Systolic Array
+        working-directory: sim
+        run: |
+          make MODULE=test_systolic_array TOPLEVEL=systolic_array \
+               VERILOG_SOURCES="../rtl/pe.sv ../rtl/systolic_array.sv" \
+               WAVES=0 SIM_BUILD=sim_build/systolic_array
+
+      - name: cocotb — Top (full matmul vs golden)
+        working-directory: sim
+        run: |
+          make MODULE=test_top TOPLEVEL=tiny_tpu_top \
+               VERILOG_SOURCES="../rtl/pe.sv ../rtl/systolic_array.sv \
+                                ../rtl/controller.sv ../rtl/tiny_tpu_top.sv" \
+               WAVES=0 SIM_BUILD=sim_build/top

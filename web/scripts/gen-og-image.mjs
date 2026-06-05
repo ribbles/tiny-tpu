@@ -38,11 +38,6 @@ function peCell(row, col) {
   const y = GRID_Y + row * (CELL + CELL_GAP);
   const isDiag    = row === col;
   const isLoading = row === col + 1;
-  const fill = isDiag
-    ? `color-mix(in oklch, ${LIME} 9%, ${SURFACE})`
-    : isLoading
-    ? SURFACE
-    : SURFACE;
   const stroke = isDiag
     ? LIME
     : isLoading
