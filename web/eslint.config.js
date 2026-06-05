@@ -40,6 +40,15 @@ export default [
     },
   },
   {
+    files: ["scripts/**/*.mjs", "scripts/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.es2022,
+      },
+    },
+  },
+  {
     ignores: ["dist/", ".astro/", "node_modules/", "public/"],
   },
 ];
