@@ -43,7 +43,7 @@
 
 </div>
 
-Enter two int8 matrices. The browser executes the actual Verilog RTL (compiled to WebAssembly) cycle-by-cycle and animates every PE, every activation, and every partial sum straight from the hardware signals. Nothing is reconstructed or reimplemented in JavaScript.
+Enter two int8 matrices. The browser executes the actual Verilog RTL (compiled to WebAssembly) cycle-by-cycle and animates every PE, every activation, and every partial sum straight from the hardware signals.
 
 ---
 
@@ -94,8 +94,7 @@ Row `i` of matrix A is delayed by `i` cycles (the *diagonal skew*) so each activ
 | MACs per cycle | Up to 16 (one per PE) |
 | Input precision | Signed int8 |
 | Accumulator width | Signed int32 |
-| Cycles per 4×4 multiply | 14 (4 load + 7 stream + 3 drain) |
-| Synthesizable on | Any FPGA tool + any modern browser via WASM |
+| Synthesizable target | Any FPGA synthesis tool (no simulation-only constructs) |
 
 ---
 
@@ -154,9 +153,6 @@ verilator --lint-only -Wall rtl/*.sv
 ```bash
 source ~/.venvs/tinytpu/bin/activate
 pytest sim/golden.py -q
-
-cd sim && make MODULE=test_top TOPLEVEL=tiny_tpu_top \
-  VERILOG_SOURCES="../rtl/pe.sv ../rtl/systolic_array.sv ../rtl/controller.sv ../rtl/tiny_tpu_top.sv"
 ```
 
 **Step 3: WASM build**
@@ -171,8 +167,6 @@ bash wasm/build.sh
 ```bash
 cd web && pnpm install && pnpm dev    # http://localhost:4321
 ```
-
-> **Full pre-PR check:** `verilator --lint-only -Wall rtl/*.sv && cd sim && pytest golden.py -q && cd ../web && pnpm lint && pnpm typecheck && pnpm build`
 
 ---
 
