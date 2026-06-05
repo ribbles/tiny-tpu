@@ -1,5 +1,5 @@
 /**
- * state-schema.ts — TinyTPU per-cycle state types (RTL↔Viz contract)
+ * state-schema.ts - TinyTPU per-cycle state types (RTL↔Viz contract)
  *
  * Sync requirement: this file and docs/STATE_SCHEMA.md define the same contract.
  * Any field added, removed, or renamed here must be reflected there, and vice versa.
@@ -16,16 +16,11 @@
 /**
  * Controller FSM state for a given cycle.
  *
- * "DONE" is a harness-derived convenience value — the hardware FSM has no DONE
+ * "DONE" is a harness-derived convenience value - the hardware FSM has no DONE
  * state; after DRAIN it returns to IDLE. The harness reports "DONE" on the single
  * cycle where the hardware `done` signal is asserted.
  */
-export type FsmState =
-  | "IDLE"
-  | "LOAD_WEIGHTS"
-  | "STREAM"
-  | "DRAIN"
-  | "DONE";
+export type FsmState = "IDLE" | "LOAD_WEIGHTS" | "STREAM" | "DRAIN" | "DONE";
 
 // ---------------------------------------------------------------------------
 // Processing element state
@@ -48,7 +43,7 @@ export interface PEState {
   /**
    * Activation input to this PE on this cycle.
    *
-   * Derived in the harness — not a direct register read:
+   * Derived in the harness - not a direct register read:
    *   actIn[i][j] = (j === 0) ? westInputs[i] : dbg_act[i][j-1]
    *
    * dbg_act[i][j] is pe[i][j].act_out (registered passthrough of the previous

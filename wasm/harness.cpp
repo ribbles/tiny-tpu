@@ -1,4 +1,4 @@
-// harness.cpp — C++ driver for Vtiny_tpu_top
+// harness.cpp - C++ driver for Vtiny_tpu_top
 //
 // Owns the Verilated model and translates RTL debug-bus signals into the
 // per-cycle CycleState objects defined in docs/STATE_SCHEMA.md.
@@ -25,7 +25,7 @@
 // stream_cyc and drain_cyc are internal to the controller and not on the debug
 // bus.  The harness mirrors them by applying the same increment/reset logic
 // using the pre-posedge FSM state observed each step.  These counters are used
-// solely to compute southOutputs[j].valid — no business logic.
+// solely to compute southOutputs[j].valid - no business logic.
 
 #include "Vtiny_tpu_top.h"
 #include "verilated.h"
@@ -219,7 +219,7 @@ public:
     ~TinyTpuSim() { top_->final(); }
 
     // -----------------------------------------------------------------------
-    // reset() — assert rst_n low for two clock cycles then release.
+    // reset() - assert rst_n low for two clock cycles then release.
     // Resets all internal harness state.
     // -----------------------------------------------------------------------
     void reset() {
@@ -235,7 +235,7 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // loadA / loadB — write matrices into a_in / b_in.
+    // loadA / loadB - write matrices into a_in / b_in.
     // Accepts a flat JS array (or Int8Array) of N*N values in row-major order.
     // Values outside the int8 range are truncated to the low 8 bits.
     // -----------------------------------------------------------------------
@@ -252,7 +252,7 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // start() — pulse the hardware start signal for one clock cycle.
+    // start() - pulse the hardware start signal for one clock cycle.
     // This transitions the FSM from IDLE → LOAD_WEIGHTS.
     // Must be called after loadA/loadB and before step()/run().
     // Resets the cycle counter and harness-side sub-counters.
@@ -269,14 +269,14 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // step() — advance one clock cycle and return its CycleState.
+    // step() - advance one clock cycle and return its CycleState.
     //
     // Sampling strategy:
     //   Pre-posedge : dbg_fsm_state, dbg_west  (combinational, next-cycle after posedge)
     //   Post-posedge: dbg_weight, dbg_act, dbg_psum, dbg_south, done  (registered)
     // -----------------------------------------------------------------------
     val step() {
-        // Low phase — combinational outputs settle from current FF state
+        // Low phase - combinational outputs settle from current FF state
         clockLow();
 
         const uint8_t pre_fsm  = static_cast<uint8_t>(top_->dbg_fsm_state);
@@ -287,7 +287,7 @@ public:
         for (int i = 0; i < N; i++)
             pre_west[i] = static_cast<int8_t>(top_->dbg_west[i]);
 
-        // Rising edge — flip-flops update
+        // Rising edge - flip-flops update
         clockHigh();
 
         // Mirror hardware counters for next call
@@ -298,9 +298,9 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // run() — step until done fires, then one extra cycle to allow
+    // run() - step until done fires, then one extra cycle to allow
     // c_buf[N-1][N-1] to be captured (hardware latches it one cycle after
-    // done asserts — see tiny_tpu_top.sv "if (done)" clause).
+    // done asserts - see tiny_tpu_top.sv "if (done)" clause).
     // Returns a JS array of all CycleState objects.
     // -----------------------------------------------------------------------
     val run() {
@@ -319,7 +319,7 @@ public:
     }
 
     // -----------------------------------------------------------------------
-    // getResult() — read c_buf as a flat row-major JS array of N*N int32s.
+    // getResult() - read c_buf as a flat row-major JS array of N*N int32s.
     // Call after run() (or after done fires and the extra step is taken).
     // -----------------------------------------------------------------------
     val getResult() const {

@@ -1,7 +1,7 @@
 """
 Golden reference model for TinyTPU matrix multiplication.
 
-This is the oracle — RTL output must bit-match this for all inputs.
+This is the oracle - RTL output must bit-match this for all inputs.
 The 4×4 hardware constraint is a single-pass limit, not a model limit;
 matmul_golden accepts any compatible shapes so L3 tiling can be verified here.
 """
@@ -20,7 +20,7 @@ def matmul_golden(A: np.ndarray, B: np.ndarray) -> np.ndarray:
     """
     if A.shape[1] != B.shape[0]:
         raise ValueError(
-            f"Shape mismatch: A is {A.shape}, B is {B.shape} — inner dims must match"
+            f"Shape mismatch: A is {A.shape}, B is {B.shape} - inner dims must match"
         )
     return (A.astype(np.int64) @ B.astype(np.int64))
 
@@ -55,7 +55,7 @@ def expected_cycles() -> int:
     Total: 4 + 7 + 3 = 14 cycles.
 
     This constant is used by cocotb tests to assert the hardware finishes exactly
-    on time — it must NOT change with matrix content.
+    on time - it must NOT change with matrix content.
     """
     N_PHYS = 4
     load   = N_PHYS            # one weight-row loaded per clock

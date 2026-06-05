@@ -27,7 +27,7 @@ wasm/**/*.mjs
 # Compiled object files
 *.o
 
-# WASM artifacts (generated) — but keep the shipped artifact
+# WASM artifacts (generated) - but keep the shipped artifact
 *.wasm
 !web/public/tiny_tpu.wasm
 

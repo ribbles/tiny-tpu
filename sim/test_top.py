@@ -3,10 +3,10 @@ cocotb integration test for tiny_tpu_top.sv.
 
 Tests
 -----
-matmul_random_20   — 20 random 4×4 matmuls (int8 inputs); each result must
+matmul_random_20   - 20 random 4×4 matmuls (int8 inputs); each result must
                      bit-match matmul_golden(A, B) from golden.py.
 
-cycle_count_matches — one fixed matmul; verifies done asserts exactly at
+cycle_count_matches - one fixed matmul; verifies done asserts exactly at
                       expected_cycles() = 14 clock cycles after start.
 
 Result capture timing

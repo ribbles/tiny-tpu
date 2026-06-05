@@ -1,8 +1,7 @@
 @import "tailwindcss";
-@import "@fontsource-variable/inter";
 
 /*
- * Design tokens — dark-first hardware theme.
+ * Design tokens - dark-first hardware theme.
  * PE state colors drive the systolic array visualization.
  */
 @layer base {
@@ -10,32 +9,98 @@
     color-scheme: dark;
 
     /* shadcn/ui base tokens (dark) */
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
+    --background: oklch(0.118 0.008 215);
+    --foreground: oklch(0.958 0.012 215);
+    --card: oklch(0.18 0.012 215);
     --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
+    --popover: oklch(0.18 0.012 215);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.898 0.231 131.3); /* electric lime */
-    --primary-foreground: oklch(0.145 0 0);
-    --secondary: oklch(0.269 0 0);
+    --primary: oklch(0.82 0.2 151); /* signal lime */
+    --primary-foreground: oklch(0.115 0.012 215);
+    --secondary: oklch(0.235 0.014 215);
     --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
+    --muted: oklch(0.235 0.014 215);
+    --muted-foreground: oklch(0.69 0.018 215);
+    --accent: oklch(0.235 0.014 215);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.2);
-    --border: oklch(1 0 0 / 10%);
+    --border: oklch(1 0 0 / 12%);
     --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.898 0.231 131.3); /* lime ring */
-    --radius: 0.5rem;
+    --ring: oklch(0.82 0.2 151);
+    --radius: 0.35rem;
+
+    /* instrument-grade landing tokens */
+    --surface: oklch(0.162 0.011 215);
+    --surface-deep: oklch(0.088 0.009 215);
+    --hairline: oklch(0.86 0.015 215 / 13%);
+    --hairline-strong: oklch(0.9 0.02 215 / 20%);
+    --grid-line: oklch(0.86 0.015 215 / 5.5%);
+    --signal-lime: oklch(0.82 0.2 151);
+    --signal-cyan: oklch(0.77 0.14 215);
+    --signal-amber: oklch(0.81 0.15 78);
+    --signal-red: oklch(0.66 0.18 30);
 
     /* PE state palette */
-    --pe-idle: oklch(0.245 0 0);
-    --pe-active: oklch(0.898 0.231 131.3); /* lime — MAC firing */
-    --pe-weight-loaded: oklch(0.627 0.194 247.6); /* blue — weight resident */
-    --pe-result: oklch(0.738 0.18 158.8); /* emerald — result valid */
+    --pe-idle: oklch(0.235 0.012 215);
+    --pe-active: var(--signal-lime);
+    --pe-weight-loaded: var(--signal-cyan);
+    --pe-result: oklch(0.72 0.16 165);
   }
+
+  /* ── Light mode - applied via data-theme attribute (JS-toggled) - */
+  [data-theme="light"] {
+    color-scheme: light;
+
+    --background: oklch(0.975 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.52 0.22 131.3);
+    --primary-foreground: oklch(0.98 0 0);
+    --secondary: oklch(0.94 0 0);
+    --secondary-foreground: oklch(0.145 0 0);
+    --muted: oklch(0.94 0 0);
+    --muted-foreground: oklch(0.42 0 0);
+    --accent: oklch(0.94 0 0);
+    --accent-foreground: oklch(0.145 0 0);
+    --destructive: oklch(0.577 0.245 27.3);
+    --border: oklch(0 0 0 / 10%);
+    --input: oklch(0 0 0 / 8%);
+    --ring: oklch(0.52 0.22 131.3);
+
+    --surface: oklch(0.97 0.003 215);
+    --surface-deep: oklch(0.93 0.006 215);
+    --hairline: oklch(0.2 0.01 215 / 11%);
+    --hairline-strong: oklch(0.2 0.01 215 / 18%);
+    --grid-line: oklch(0.2 0.01 215 / 5%);
+    --signal-lime: oklch(0.52 0.2 151);
+    --signal-cyan: oklch(0.44 0.14 215);
+    --signal-amber: oklch(0.54 0.14 78);
+    --signal-red: oklch(0.6 0.18 30);
+
+    --pe-idle: oklch(0.92 0 0);
+    --pe-active: var(--signal-lime);
+    --pe-weight-loaded: var(--signal-cyan);
+    --pe-result: oklch(0.42 0.16 158.8);
+  }
+} /* end @layer base */
+
+/*
+ * Smooth theme transitions - only active after JS adds .theme-ready
+ * to <html>. This means first paint (including localStorage restore)
+ * is always instant; only subsequent user-toggled switches animate.
+ */
+.theme-ready,
+.theme-ready *,
+.theme-ready *::before,
+.theme-ready *::after {
+  transition:
+    background-color 0.22s ease,
+    color 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease !important;
 }
 
 /* Bridge CSS vars → Tailwind v4 utility classes */
@@ -64,7 +129,8 @@
   --color-pe-weight-loaded: var(--pe-weight-loaded);
   --color-pe-result: var(--pe-result);
 
-  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-sans: "Geist", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", "SFMono-Regular", ui-monospace, monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -77,11 +143,290 @@
     border-color: var(--border);
     box-sizing: border-box;
   }
+
   body {
     background-color: var(--background);
     color: var(--foreground);
     font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1,
+      "calt" 1;
+    text-rendering: optimizeLegibility;
+    position: relative;
+  }
+
+  /* Global site grid - PCB crosshatch at near-invisible opacity */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--hairline) 1px, transparent 1px),
+      linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.08;
+    /* Fade the grid toward edges so it reads as depth, not wallpaper */
+    -webkit-mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 40%, transparent 100%);
+    mask-image: radial-gradient(ellipse 100% 100% at 50% 50%, black 40%, transparent 100%);
+  }
+
+  /* Headings: consistent scale, tight tracking, optical sizing */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-sans);
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1;
+    text-rendering: optimizeLegibility;
+    color: var(--foreground);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+  }
+
+  h1 { font-size: 2rem;    font-weight: 700; }
+  h2 { font-size: 1.5rem;  font-weight: 700; }
+  h3 { font-size: 1.25rem; font-weight: 600; }
+  h4 { font-size: 1rem;    font-weight: 600; }
+  h5 { font-size: 0.875rem; font-weight: 600; letter-spacing: -0.01em; }
+  h6 { font-size: 0.75rem;  font-weight: 600; letter-spacing: 0; }
+
+  p {
+    line-height: 1.7;
+  }
+
+  /* Monospace elements: tabular figures, no ligatures */
+  code,
+  pre,
+  kbd,
+  .font-mono {
+    font-family: var(--font-mono);
+    font-feature-settings:
+      "tnum" 1,
+      "liga" 0,
+      "calt" 1;
+  }
+}
+
+@layer components {
+  /* ═══════════════════════════════════════════
+     LAYOUT PRIMITIVES & CONTAINER
+     ═══════════════════════════════════════════ */
+  .container {
+    width: min(1100px, 100% - 48px);
+    margin-inline: auto;
+  }
+
+  /* ═══════════════════════════════════════════
+     GLOBAL NAVIGATION
+     ═══════════════════════════════════════════ */
+  .nav-wrap {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: color-mix(in oklch, var(--background) 85%, transparent);
+    backdrop-filter: blur(16px) saturate(1.5);
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    height: 56px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    flex-shrink: 0;
+    justify-self: start;
+  }
+
+  .logo-text {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--foreground);
+  }
+
+  .logo-text strong {
+    color: var(--signal-lime);
+    font-weight: 700;
+  }
+
+  .logo-badge {
+    font-family: var(--font-mono);
+    font-size: 0.48rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--signal-lime);
+    background: color-mix(in oklch, var(--signal-lime) 14%, transparent);
+    border: 1px solid color-mix(in oklch, var(--signal-lime) 35%, transparent);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    list-style: none;
+    justify-self: center;
+  }
+
+  .nav-links a {
+    font-size: 0.83rem;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition:
+      color 0.15s,
+      background 0.15s;
+  }
+
+  .nav-links a:hover,
+  .nav-links a.active {
+    color: var(--foreground);
+    background: var(--hairline);
+  }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    justify-self: end;
+  }
+
+  /* ═══════════════════════════════════════════
+     COMMON BUTTONS
+     ═══════════════════════════════════════════ */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: oklch(0.08 0.01 215);
+    background: var(--signal-lime);
+    border: 1px solid color-mix(in oklch, var(--signal-lime) 70%, white);
+    padding: 8px 18px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-primary:hover {
+    background: color-mix(in oklch, var(--signal-lime) 88%, white);
+  }
+
+  .btn-sm {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    height: 34px;
+  }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--foreground);
+    background: transparent;
+    border: 1px solid var(--hairline-strong);
+    padding: 8px 18px;
+    border-radius: 6px;
+    transition:
+      border-color 0.15s,
+      color 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-ghost:hover {
+    border-color: color-mix(in oklch, var(--signal-cyan) 55%, var(--hairline-strong));
+    color: var(--signal-cyan);
+  }
+
+  .btn-lg {
+    padding: 11px 24px;
+    font-size: 0.88rem;
+  }
+
+  /* ═══════════════════════════════════════════
+     THEME TOGGLE BUTTON
+     ═══════════════════════════════════════════ */
+  .theme-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--hairline-strong);
+    border-radius: 6px;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      color 0.15s,
+      border-color 0.15s,
+      background 0.15s;
+  }
+
+  .theme-btn:hover {
+    color: var(--foreground);
+    background: var(--hairline);
+    border-color: color-mix(in oklch, var(--signal-cyan) 45%, var(--hairline-strong));
+  }
+
+  /* Icon visibility: CSS-driven, reads the data-theme on <html> */
+
+  /* Dark mode → show moon, hide sun */
+  :root .icon-sun,
+  [data-theme="dark"] .icon-sun {
+    display: none;
+  }
+  [data-theme="dark"] .icon-moon {
+    display: block;
+  }
+
+  /* Light mode → show sun, hide moon */
+  [data-theme="light"] .icon-moon {
+    display: none;
+  }
+  [data-theme="light"] .icon-sun {
+    display: block;
+  }
+
+  /* Responsive Adjustments for Navbar */
+  @media (max-width: 900px) {
+    .nav {
+      display: flex;
+      justify-content: space-between;
+    }
+    .nav-links {
+      display: none;
+    }
   }
 }

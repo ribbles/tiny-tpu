@@ -1,0 +1,766 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { buttonVariants } from "@/components/ui/button";
+import "@/styles/global.css";
+
+const GITHUB_URL = "https://github.com/deaneeth/tiny-tpu";
+
+const stateFields = [
+  { field: "cycle",        type: "number",              source: "counter in harness",            note: "Starts at 0 when start fires" },
+  { field: "fsmState",     type: '"IDLE" | "LOAD_WEIGHTS" | "STREAM" | "DRAIN" | "DONE"', source: "dbg_fsm_state (3-bit)", note: '"DONE" is harness-derived' },
+  { field: "pes[16]",      type: "PEState[]",           source: "dbg_weight / dbg_act / dbg_psum", note: "Row-major: index i×4+j" },
+  { field: "westInputs[4]",type: "number[]",            source: "dbg_west",                      note: "Signed int8, current cycle" },
+  { field: "southOutputs[4]", type: "SouthOutput[]",   source: "dbg_south + harness validity",  note: "valid = harness-computed" },
+  { field: "done",         type: "boolean",             source: "done port of tiny_tpu_top",     note: "Single-cycle pulse" },
+];
+
+const peFields = [
+  { field: "row, col",  source: "PE index (i, j)",       note: "0–3" },
+  { field: "weight",    source: "dbg_weight[i][j]",       note: "Signed int8, stationary" },
+  { field: "actIn",     source: "Derived (not a direct register read)", note: "j==0 ? dbg_west[i] : dbg_act[i][j-1]" },
+  { field: "psum",      source: "dbg_psum[i][j]",         note: "Signed int32, registered psum_out" },
+  { field: "active",    source: "fsmState==STREAM && actIn!=0", note: "Harness-computed boolean" },
+];
+---
+
+<Layout
+  title="Architecture | TinyTPU"
+  description="Monorepo layout, state data contract, build flow, and the design decisions behind TinyTPU's RTL-to-browser pipeline."
+>
+  <div class="page">
+
+    <!-- NAV -->
+    <header class="nav-wrap">
+      <nav class="container nav" aria-label="Site navigation">
+        <a href="/" class="logo" aria-label="TinyTPU home">
+          <span class="logo-text">Tiny<strong>TPU</strong></span>
+          <span class="logo-badge">RTL</span>
+        </a>
+        <div class="nav-links" role="list">
+          <a href="/" role="listitem">Home</a>
+          <a href="/app" role="listitem">Visualizer</a>
+          <a href="/docs/how-it-works" role="listitem">How it works</a>
+          <a href="/docs/the-systolic-array" role="listitem">Systolic array</a>
+          <a href="/docs/architecture" role="listitem" aria-current="page">Architecture</a>
+          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" role="listitem">GitHub</a>
+        </div>
+        <a href="/app" class={buttonVariants({ variant: "default", size: "sm" }) + " font-semibold"}>Open instrument</a>
+      </nav>
+    </header>
+
+    <!-- HERO -->
+    <section class="doc-hero border-b border-hairline">
+      <div class="container">
+        <div class="breadcrumb">
+          <a href="/">Home</a>
+          <span aria-hidden="true">/</span>
+          <span>Architecture</span>
+        </div>
+        <h1 class="doc-title">Monorepo layout, state contract, and build flow</h1>
+        <p class="doc-lead">
+          TinyTPU is a single monorepo with four distinct layers: the RTL, the WASM
+          bridge, the web frontend, and the simulation harness. This page documents
+          the boundaries between them and the data contract that keeps the visualizer
+          honest.
+        </p>
+      </div>
+    </section>
+
+    <!-- MONOREPO STRUCTURE -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>Monorepo layout</h2>
+        <p>
+          Each directory has a single responsibility. Nothing crosses these boundaries
+          except through the defined interfaces documented here.
+        </p>
+
+        <div class="tree" role="img" aria-label="Monorepo directory tree">
+          <div class="tree-root">tiny-tpu/</div>
+          <div class="tree-group">
+            <div class="tree-dir">
+              <span class="tree-icon tree-icon--sv">SV</span>
+              <code>rtl/</code>
+              <span class="tree-comment">SystemVerilog, the source of truth</span>
+            </div>
+            <div class="tree-children">
+              <div class="tree-file"><code>pe.sv</code>: MAC cell, stationary weight register</div>
+              <div class="tree-file"><code>systolic_array.sv</code>: 4x4 generate-loop of PEs</div>
+              <div class="tree-file"><code>controller.sv</code>: FSM: IDLE → LOAD_WEIGHTS → STREAM → DRAIN</div>
+              <div class="tree-file"><code>tiny_tpu_top.sv</code>: top wrapper + debug output bus</div>
+              <div class="tree-file"><code>README.md</code>: signal dictionary and dataflow spec</div>
+            </div>
+          </div>
+          <div class="tree-group">
+            <div class="tree-dir">
+              <span class="tree-icon tree-icon--sim">SIM</span>
+              <code>sim/</code>
+              <span class="tree-comment">cocotb verification against golden model</span>
+            </div>
+            <div class="tree-children">
+              <div class="tree-file"><code>golden.py</code>: numpy reference (ground truth)</div>
+              <div class="tree-file"><code>test_pe.py</code>, <code>test_systolic_array.py</code>, <code>test_top.py</code></div>
+              <div class="tree-file"><code>Makefile</code>: cocotb + Verilator backend</div>
+            </div>
+          </div>
+          <div class="tree-group">
+            <div class="tree-dir">
+              <span class="tree-icon tree-icon--cpp">C++</span>
+              <code>wasm/</code>
+              <span class="tree-comment">Verilator C++ harness → Emscripten → WASM</span>
+            </div>
+            <div class="tree-children">
+              <div class="tree-file"><code>harness.cpp</code>: <code>TinyTpuSim</code> class, reads debug bus, emits CycleState</div>
+              <div class="tree-file"><code>bindings.cpp</code>: embind surface, JS-callable API</div>
+              <div class="tree-file"><code>build.sh</code>: verilator --cc + em++ invocation</div>
+            </div>
+          </div>
+          <div class="tree-group">
+            <div class="tree-dir">
+              <span class="tree-icon tree-icon--ts">TS</span>
+              <code>web/</code>
+              <span class="tree-comment">Astro + React + shadcn/ui + Tailwind</span>
+            </div>
+            <div class="tree-children">
+              <div class="tree-file"><code>src/lib/state-schema.ts</code>: TypeScript types mirroring docs/STATE_SCHEMA.md</div>
+              <div class="tree-file"><code>src/lib/wasm-loader.ts</code>: typed async wrapper for WASM embind API</div>
+              <div class="tree-file"><code>src/hooks/useTinyTpu.ts</code>: CycleState[] + playback state</div>
+              <div class="tree-file"><code>src/components/Visualizer.tsx</code>: React island (client:only)</div>
+              <div class="tree-file"><code>src/components/PEGrid.tsx</code>: pure SVG, presentational</div>
+              <div class="tree-file"><code>src/components/Controls.tsx</code>: transport bar</div>
+              <div class="tree-file"><code>src/components/MatrixInput.tsx</code>: A/B matrix editors</div>
+              <div class="tree-file"><code>public/tiny_tpu.mjs</code>, <code>public/tiny_tpu.wasm</code>: compiled artifacts</div>
+            </div>
+          </div>
+          <div class="tree-group">
+            <div class="tree-dir">
+              <span class="tree-icon tree-icon--doc">MD</span>
+              <code>docs/</code>
+              <span class="tree-comment">Extended documentation</span>
+            </div>
+            <div class="tree-children">
+              <div class="tree-file"><code>STATE_SCHEMA.md</code>: canonical state contract (must sync with state-schema.ts)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STATE CONTRACT -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>The state data contract</h2>
+        <p>
+          The C++ harness and the React visualizer communicate through a single shared
+          contract: the <code>CycleState</code> object emitted once per clock tick.
+          This contract is defined in two places that must stay in sync:
+          <code>docs/STATE_SCHEMA.md</code> (prose) and
+          <code>web/src/lib/state-schema.ts</code> (TypeScript types).
+        </p>
+        <p>
+          Every field in <code>CycleState</code> maps to either a direct hardware
+          signal or a documented derivation from hardware signals. There are no
+          fabricated values.
+        </p>
+
+        <h3>CycleState top-level fields</h3>
+        <div class="schema-table-wrap">
+          <table class="schema-table" aria-label="CycleState top-level fields">
+            <thead>
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">TypeScript type</th>
+                <th scope="col">Hardware source</th>
+                <th scope="col">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stateFields.map(f => (
+                <tr>
+                  <td><code>{f.field}</code></td>
+                  <td class="type-cell"><code>{f.type}</code></td>
+                  <td class="source-cell">{f.source}</td>
+                  <td class="note-cell">{f.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h3>PEState fields</h3>
+        <div class="schema-table-wrap">
+          <table class="schema-table" aria-label="PEState fields">
+            <thead>
+              <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Hardware source</th>
+                <th scope="col">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {peFields.map(f => (
+                <tr>
+                  <td><code>{f.field}</code></td>
+                  <td class="source-cell">{f.source}</td>
+                  <td class="note-cell">{f.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--amber">
+          <strong>The actIn derivation:</strong> the debug bus exposes
+          <code>dbg_act[i][j]</code>, which is <code>pe[i][j].act_out</code>, the
+          <em>registered output</em> of the passthrough, not the input of the current
+          cycle. The harness computes <code>actIn</code> as
+          <code>(j==0) ? dbg_west[i] : dbg_act[i][j-1]</code>, which is the correct
+          activation signal entering PE[i][j] on this cycle. This derivation is
+          documented in both <code>STATE_SCHEMA.md</code> and <code>rtl/README.md</code>.
+        </div>
+      </div>
+    </section>
+
+    <!-- BUILD FLOW -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>Build flow</h2>
+        <p>
+          All RTL tooling (Verilator, Emscripten) runs inside WSL2 Ubuntu. The web
+          frontend can run on either WSL2 or Windows; prefer WSL2 for consistency.
+        </p>
+
+        <h3>1. RTL lint (always clean)</h3>
+        <pre class="code-block">verilator --lint-only -Wall rtl/*.sv</pre>
+        <p>
+          Run this before every commit touching RTL. Any warning is a build failure. <code>UNOPTFLAT</code> (combinational loop), <code>BLKANDNBLK</code>
+          (mixed blocking/non-blocking), and inferred latches are all blocking
+          conditions.
+        </p>
+
+        <h3>2. RTL simulation (golden verification)</h3>
+        <pre class="code-block">source ~/.venvs/tinytpu/bin/activate
+pytest sim/golden.py -q
+cd sim && make MODULE=test_top TOPLEVEL=tiny_tpu_top \
+  VERILOG_SOURCES="../rtl/pe.sv ../rtl/systolic_array.sv \
+                   ../rtl/controller.sv ../rtl/tiny_tpu_top.sv"</pre>
+        <p>
+          The cocotb test suite runs the RTL via Verilator's Python bindings and
+          asserts bit-exact equality with <code>sim/golden.py</code> for 20+ random
+          int8 matrix pairs. A failing test means the RTL is wrong. Do not proceed.
+        </p>
+
+        <h3>3. WASM build</h3>
+        <pre class="code-block">bash wasm/build.sh
+# outputs web/public/tiny_tpu.mjs + web/public/tiny_tpu.wasm</pre>
+        <p>
+          The build script runs <code>verilator --cc</code> on the RTL (generates C++)
+          then invokes <code>em++</code> to compile the C++ harness + Verilator model
+          to WebAssembly. Artifacts land in <code>web/public/</code> so they are served
+          from the web root in both dev and production.
+        </p>
+        <div class="callout callout--cyan">
+          <strong>Rebuild WASM after any RTL change.</strong> The WASM binary is a
+          compiled snapshot of the RTL at build time. If you modify
+          <code>rtl/*.sv</code>, re-run <code>bash wasm/build.sh</code> before testing
+          the frontend; otherwise the browser is running stale hardware.
+        </div>
+
+        <h3>4. Frontend (web/)</h3>
+        <pre class="code-block">cd web
+pnpm dev          # dev server at localhost:4321
+pnpm lint         # eslint
+pnpm typecheck    # astro check && tsc --noEmit
+pnpm build        # production build → web/dist/</pre>
+
+        <h3>Full pre-PR check</h3>
+        <pre class="code-block">verilator --lint-only -Wall rtl/*.sv
+cd sim && pytest golden.py -q && make MODULE=test_top \
+  TOPLEVEL=tiny_tpu_top \
+  VERILOG_SOURCES="../rtl/pe.sv ../rtl/systolic_array.sv \
+                   ../rtl/controller.sv ../rtl/tiny_tpu_top.sv"
+cd web && pnpm lint && pnpm typecheck && pnpm build</pre>
+      </div>
+    </section>
+
+    <!-- KEY DESIGN DECISIONS -->
+    <section class="doc-section border-b border-hairline">
+      <div class="container doc-body">
+        <h2>Key design decisions</h2>
+
+        <div class="decision-list">
+          <div class="decision">
+            <div class="decision-title">RTL is the single source of truth</div>
+            <p>
+              The frontend never reimplements the matmul in JavaScript for the
+              animation. It reads state out of the compiled WASM binary, a binary
+              that is itself a compiled representation of the SystemVerilog.
+              If the RTL is wrong, the visualizer shows the wrong thing.
+              If the RTL is right (golden-verified), the visualizer is right.
+            </p>
+          </div>
+
+          <div class="decision">
+            <div class="decision-title">Debug output bus, not public_flat</div>
+            <p>
+              Verilator's <code>public_flat</code> attribute can expose internal signals
+              by name, but the names change across synthesis tools and Verilator versions.
+              TinyTPU instead exposes a stable, explicitly-typed debug output bus on
+              <code>tiny_tpu_top</code>. The harness reads these ports after each
+              <code>eval()</code>, the same way any downstream module would read outputs.
+              This keeps the viz interface stable and the RTL synthesizable.
+            </p>
+          </div>
+
+          <div class="decision">
+            <div class="decision-title">WASM is client-only, always</div>
+            <p>
+              Astro builds the site at compile time. Importing WASM during SSR causes
+              a <code>window is not defined</code> error; WASM requires a browser
+              environment. Every React island that touches WASM uses
+              <code>client:only="react"</code> and loads the module inside a
+              <code>useEffect</code> behind a <code>typeof window !== "undefined"</code>
+              guard. Both guards must be present; either alone is insufficient.
+            </p>
+          </div>
+
+          <div class="decision">
+            <div class="decision-title">Run-once, not per-frame</div>
+            <p>
+              <code>sim.run()</code> steps the WASM through the full 14-cycle matmul
+              and returns the complete <code>CycleState[]</code> array once. The
+              visualizer animates by indexing into this pre-computed array. The WASM
+              does not execute on every animation frame. This decouples rendering
+              performance from simulation throughput.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NAV LINKS -->
+    <section class="doc-section">
+      <div class="container doc-nav-links">
+        <a href="/docs/the-systolic-array" class="doc-nav-card doc-nav-card--prev">
+          <span class="doc-nav-label">Previous</span>
+          <span class="doc-nav-title">&larr; The systolic array</span>
+          <span class="doc-nav-desc">Weight-stationary dataflow and skew</span>
+        </a>
+        <a href={GITHUB_URL} class="doc-nav-card doc-nav-card--next" target="_blank" rel="noopener noreferrer">
+          <span class="doc-nav-label">Source</span>
+          <span class="doc-nav-title">View on GitHub &rarr;</span>
+          <span class="doc-nav-desc">RTL, harness, tests, and frontend</span>
+        </a>
+      </div>
+    </section>
+
+  </div>
+</Layout>
+
+<style>
+.page {
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* ── Nav ── */
+.nav-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in oklch, var(--background) 85%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.container {
+  width: min(100%, 1080px);
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  height: 56px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.logo-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal-lime);
+  background: color-mix(in oklch, var(--signal-lime) 12%, transparent);
+  border: 1px solid color-mix(in oklch, var(--signal-lime) 28%, transparent);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.nav-links a {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: 5px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.nav-links a:hover,
+.nav-links a[aria-current="page"] {
+  color: var(--foreground);
+  background: color-mix(in oklch, var(--foreground) 6%, transparent);
+}
+
+/* ── Doc hero ── */
+.doc-hero {
+  padding-block: 56px 48px;
+  background: color-mix(in oklch, var(--background) 96%, var(--signal-amber) 4%);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--muted-foreground);
+  margin-bottom: 20px;
+}
+
+.breadcrumb a {
+  color: var(--signal-cyan);
+  text-decoration: none;
+}
+.breadcrumb a:hover { text-decoration: underline; }
+
+.doc-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--foreground);
+  margin-bottom: 16px;
+  max-width: 720px;
+}
+
+.doc-lead {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--muted-foreground);
+  max-width: 680px;
+}
+
+/* ── Doc section ── */
+.doc-section {
+  padding-block: 56px;
+}
+
+.doc-body {
+  max-width: 860px;
+}
+
+.doc-body h2 {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  margin-bottom: 16px;
+}
+
+.doc-body h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  margin-top: 32px;
+  margin-bottom: 10px;
+}
+
+.doc-body p {
+  font-size: 0.94rem;
+  line-height: 1.82;
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+}
+
+.doc-body code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 8%, transparent);
+  border: 1px solid color-mix(in oklch, var(--signal-cyan) 18%, transparent);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ── Monorepo tree ── */
+.tree {
+  background: var(--surface-deep);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  padding: 20px 24px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  margin-block: 20px;
+}
+
+.tree-root {
+  color: var(--foreground);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.tree-group {
+  margin-bottom: 12px;
+}
+
+.tree-dir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.tree-icon {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.tree-icon--sv  { background: color-mix(in oklch, var(--signal-lime) 15%, transparent); color: var(--signal-lime); }
+.tree-icon--sim { background: color-mix(in oklch, var(--signal-amber) 15%, transparent); color: var(--signal-amber); }
+.tree-icon--cpp { background: color-mix(in oklch, var(--signal-cyan) 15%, transparent); color: var(--signal-cyan); }
+.tree-icon--ts  { background: color-mix(in oklch, oklch(0.64 0.18 260) 15%, transparent); color: oklch(0.64 0.18 260); }
+.tree-icon--doc { background: color-mix(in oklch, var(--muted-foreground) 15%, transparent); color: var(--muted-foreground); }
+
+.tree-comment {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+  font-weight: 400;
+}
+
+.tree-children {
+  padding-left: 32px;
+  border-left: 1px solid var(--hairline);
+  margin-left: 14px;
+  margin-top: 4px;
+}
+
+.tree-file {
+  font-size: 0.78rem;
+  color: var(--muted-foreground);
+  padding-left: 12px;
+}
+
+.tree-file code {
+  color: var(--signal-cyan);
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* ── Schema tables ── */
+.schema-table-wrap {
+  overflow-x: auto;
+  margin-block: 16px;
+}
+
+.schema-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.schema-table th {
+  background: var(--surface-deep);
+  color: var(--muted-foreground);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline-strong);
+  white-space: nowrap;
+}
+
+.schema-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--muted-foreground);
+  vertical-align: top;
+}
+
+.schema-table tr:last-child td { border-bottom: none; }
+
+.type-cell  { color: oklch(0.64 0.18 260); font-family: var(--font-mono); font-size: 0.78rem; }
+.source-cell { font-family: var(--font-mono); font-size: 0.78rem; color: var(--signal-amber); }
+.note-cell  { font-size: 0.78rem; }
+
+/* ── Code block ── */
+.code-block {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  color: var(--signal-lime);
+  background: var(--surface-deep);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 6px;
+  padding: 16px 20px;
+  overflow-x: auto;
+  white-space: pre;
+  margin-block: 12px;
+}
+
+/* ── Callouts ── */
+.callout {
+  border-left: 3px solid;
+  padding: 12px 16px;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.86rem;
+  line-height: 1.7;
+  margin-block: 16px;
+}
+
+.callout strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.callout--amber {
+  border-color: var(--signal-amber);
+  background: color-mix(in oklch, var(--signal-amber) 7%, transparent);
+  color: color-mix(in oklch, var(--signal-amber) 80%, var(--foreground));
+}
+
+.callout--cyan {
+  border-color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 7%, transparent);
+  color: color-mix(in oklch, var(--signal-cyan) 80%, var(--foreground));
+}
+
+/* ── Design decisions ── */
+.decision-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 20px;
+}
+
+.decision {
+  padding: 22px 24px;
+  border-bottom: 1px solid var(--hairline);
+  background: color-mix(in oklch, var(--surface) 60%, transparent);
+}
+
+.decision:last-child { border-bottom: none; }
+
+.decision:hover { background: color-mix(in oklch, var(--surface) 90%, transparent); }
+
+.decision-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 10px;
+  letter-spacing: -0.015em;
+}
+
+.decision p {
+  font-size: 0.88rem;
+  line-height: 1.78;
+  color: var(--muted-foreground);
+  margin: 0;
+}
+
+/* ── Doc nav links ── */
+.doc-nav-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.doc-nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  text-decoration: none;
+  max-width: 260px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.doc-nav-card:hover {
+  border-color: var(--signal-cyan);
+  background: color-mix(in oklch, var(--signal-cyan) 4%, var(--surface));
+}
+
+.doc-nav-label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.doc-nav-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--signal-cyan);
+}
+
+.doc-nav-desc {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 700px) {
+  .nav-links { display: none; }
+  .doc-nav-links { justify-content: flex-start; }
+}
+</style>

@@ -1,5 +1,5 @@
 /**
- * L1SinglePE — focuses on one Processing Element, teaching the MAC operation.
+ * L1SinglePE - focuses on one Processing Element, teaching the MAC operation.
  *
  * Shows:
  *   - A row/column picker to select which PE to inspect (0–3 × 0–3)
@@ -7,10 +7,10 @@
  *   - The MAC equation updating per cycle: psum = psum_prev + weight × actIn
  *   - A per-cycle psum history table (last N cycles)
  *
- * Pure presentational — receives states[] and cycleIdx from the parent.
+ * Pure presentational - receives states[] and cycleIdx from the parent.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { CycleState, PEState } from "@/lib/state-schema";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -46,16 +46,24 @@ export function L1SinglePE({ states, cycleIdx }: L1SinglePEProps) {
   const current = states[cycleIdx];
   const pe = current ? getPE(current, selRow, selCol) : null;
 
-  // psum history: last 8 cycles
-  const historyStart = Math.max(0, cycleIdx - 7);
-  const history = states
-    .slice(historyStart, cycleIdx + 1)
-    .map((s, i) => ({ cycle: historyStart + i, pe: getPE(s, selRow, selCol), fsm: s.fsmState }));
+  // Show ALL cycles so the user can see when MAC was active.
+  // "Last 8 cycles" hid the activation window which is often in the first half.
+  const history = states.map((s, i) => ({
+    cycle: i,
+    pe: getPE(s, selRow, selCol),
+    fsm: s.fsmState,
+  }));
 
   const prevPe =
     cycleIdx > 0 && states[cycleIdx - 1]
       ? getPE(states[cycleIdx - 1]!, selRow, selCol)
       : null;
+
+  // Scroll the current-cycle row into view whenever cycleIdx changes
+  const currentRowRef = useRef<HTMLTableRowElement>(null);
+  useEffect(() => {
+    currentRowRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [cycleIdx, selRow, selCol]);
 
   // Color for the large PE cell
   function cellColor(): string {
@@ -77,6 +85,7 @@ export function L1SinglePE({ states, cycleIdx }: L1SinglePEProps) {
             {[0, 1, 2, 3].map((r) => (
               <button
                 key={r}
+                type="button"
                 onClick={() => setSelRow(r)}
                 className={`h-7 w-7 rounded text-xs font-mono transition-colors ${
                   r === selRow
@@ -96,6 +105,7 @@ export function L1SinglePE({ states, cycleIdx }: L1SinglePEProps) {
             {[0, 1, 2, 3].map((c) => (
               <button
                 key={c}
+                type="button"
                 onClick={() => setSelCol(c)}
                 className={`h-7 w-7 rounded text-xs font-mono transition-colors ${
                   c === selCol
@@ -181,13 +191,16 @@ export function L1SinglePE({ states, cycleIdx }: L1SinglePEProps) {
         </div>
       </div>
 
-      {/* psum history */}
+      {/* psum history - all cycles, scrollable, current row auto-scrolls into view */}
       {history.length > 0 && (
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">psum history (last {history.length} cycles)</p>
-          <div className="overflow-x-auto">
+          <p className="text-xs text-muted-foreground">
+            PE[{selRow}][{selCol}] - all {history.length} cycles
+            <span className="ml-2 text-primary/60">● = MAC fired</span>
+          </p>
+          <div className="overflow-auto max-h-52 rounded-lg border border-border">
             <table className="text-xs font-mono border-collapse w-full">
-              <thead>
+              <thead className="sticky top-0 bg-card">
                 <tr className="text-muted-foreground">
                   <th className="px-2 py-1 text-left font-normal border-b border-border">cycle</th>
                   <th className="px-2 py-1 text-left font-normal border-b border-border">fsm</th>
@@ -198,29 +211,35 @@ export function L1SinglePE({ states, cycleIdx }: L1SinglePEProps) {
                 </tr>
               </thead>
               <tbody>
-                {history.map(({ cycle, pe: hPe, fsm }, i) => (
-                  <tr
-                    key={cycle}
-                    className={
-                      i === history.length - 1
-                        ? "bg-primary/10 text-foreground"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    <td className="px-2 py-0.5">{cycle}</td>
-                    <td className="px-2 py-0.5">{fsm}</td>
-                    <td className="px-2 py-0.5 text-right">{hPe.weight}</td>
-                    <td className="px-2 py-0.5 text-right">{hPe.actIn}</td>
-                    <td className="px-2 py-0.5 text-right">{hPe.psum}</td>
-                    <td className="px-2 py-0.5">
-                      {hPe.active ? (
-                        <span className="text-[oklch(0.898_0.231_131.3)]">●</span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {history.map(({ cycle, pe: hPe, fsm }) => {
+                  const isCurrent = cycle === cycleIdx;
+                  return (
+                    <tr
+                      key={cycle}
+                      ref={isCurrent ? currentRowRef : null}
+                      className={
+                        isCurrent
+                          ? "bg-primary/10 text-foreground"
+                          : hPe.active
+                            ? "bg-primary/5 text-foreground"
+                            : "text-muted-foreground"
+                      }
+                    >
+                      <td className="px-2 py-0.5 tabular-nums">{cycle}</td>
+                      <td className="px-2 py-0.5">{fsm}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{hPe.weight}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{hPe.actIn}</td>
+                      <td className="px-2 py-0.5 text-right tabular-nums">{hPe.psum}</td>
+                      <td className="px-2 py-0.5">
+                        {hPe.active ? (
+                          <span className="text-primary font-bold">●</span>
+                        ) : (
+                          <span className="text-muted-foreground/40">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
