@@ -17,14 +17,14 @@ const stateFields = [
 const peFields = [
   { field: "row, col",  source: "PE index (i, j)",       note: "0–3" },
   { field: "weight",    source: "dbg_weight[i][j]",       note: "Signed int8, stationary" },
-  { field: "actIn",     source: "Derived — not a direct register read", note: "j==0 ? dbg_west[i] : dbg_act[i][j-1]" },
+  { field: "actIn",     source: "Derived (not a direct register read)", note: "j==0 ? dbg_west[i] : dbg_act[i][j-1]" },
   { field: "psum",      source: "dbg_psum[i][j]",         note: "Signed int32, registered psum_out" },
   { field: "active",    source: "fsmState==STREAM && actIn!=0", note: "Harness-computed boolean" },
 ];
 ---
 
 <Layout
-  title="Architecture — TinyTPU"
+  title="Architecture | TinyTPU"
   description="Monorepo layout, state data contract, build flow, and the design decisions behind TinyTPU's RTL-to-browser pipeline."
 >
   <div class="page">
@@ -81,14 +81,14 @@ const peFields = [
             <div class="tree-dir">
               <span class="tree-icon tree-icon--sv">SV</span>
               <code>rtl/</code>
-              <span class="tree-comment">SystemVerilog — the source of truth</span>
+              <span class="tree-comment">SystemVerilog, the source of truth</span>
             </div>
             <div class="tree-children">
-              <div class="tree-file"><code>pe.sv</code> — MAC cell, stationary weight register</div>
-              <div class="tree-file"><code>systolic_array.sv</code> — 4×4 generate-loop of PEs</div>
-              <div class="tree-file"><code>controller.sv</code> — FSM: IDLE → LOAD_WEIGHTS → STREAM → DRAIN</div>
-              <div class="tree-file"><code>tiny_tpu_top.sv</code> — top wrapper + debug output bus</div>
-              <div class="tree-file"><code>README.md</code> — signal dictionary and dataflow spec</div>
+              <div class="tree-file"><code>pe.sv</code>: MAC cell, stationary weight register</div>
+              <div class="tree-file"><code>systolic_array.sv</code>: 4x4 generate-loop of PEs</div>
+              <div class="tree-file"><code>controller.sv</code>: FSM: IDLE → LOAD_WEIGHTS → STREAM → DRAIN</div>
+              <div class="tree-file"><code>tiny_tpu_top.sv</code>: top wrapper + debug output bus</div>
+              <div class="tree-file"><code>README.md</code>: signal dictionary and dataflow spec</div>
             </div>
           </div>
           <div class="tree-group">
@@ -98,9 +98,9 @@ const peFields = [
               <span class="tree-comment">cocotb verification against golden model</span>
             </div>
             <div class="tree-children">
-              <div class="tree-file"><code>golden.py</code> — numpy reference (ground truth)</div>
+              <div class="tree-file"><code>golden.py</code>: numpy reference (ground truth)</div>
               <div class="tree-file"><code>test_pe.py</code>, <code>test_systolic_array.py</code>, <code>test_top.py</code></div>
-              <div class="tree-file"><code>Makefile</code> — cocotb + Verilator backend</div>
+              <div class="tree-file"><code>Makefile</code>: cocotb + Verilator backend</div>
             </div>
           </div>
           <div class="tree-group">
@@ -110,9 +110,9 @@ const peFields = [
               <span class="tree-comment">Verilator C++ harness → Emscripten → WASM</span>
             </div>
             <div class="tree-children">
-              <div class="tree-file"><code>harness.cpp</code> — <code>TinyTpuSim</code> class, reads debug bus, emits CycleState</div>
-              <div class="tree-file"><code>bindings.cpp</code> — embind surface, JS-callable API</div>
-              <div class="tree-file"><code>build.sh</code> — verilator --cc + em++ invocation</div>
+              <div class="tree-file"><code>harness.cpp</code>: <code>TinyTpuSim</code> class, reads debug bus, emits CycleState</div>
+              <div class="tree-file"><code>bindings.cpp</code>: embind surface, JS-callable API</div>
+              <div class="tree-file"><code>build.sh</code>: verilator --cc + em++ invocation</div>
             </div>
           </div>
           <div class="tree-group">
@@ -122,14 +122,14 @@ const peFields = [
               <span class="tree-comment">Astro + React + shadcn/ui + Tailwind</span>
             </div>
             <div class="tree-children">
-              <div class="tree-file"><code>src/lib/state-schema.ts</code> — TypeScript types mirroring docs/STATE_SCHEMA.md</div>
-              <div class="tree-file"><code>src/lib/wasm-loader.ts</code> — typed async wrapper for WASM embind API</div>
-              <div class="tree-file"><code>src/hooks/useTinyTpu.ts</code> — CycleState[] + playback state</div>
-              <div class="tree-file"><code>src/components/Visualizer.tsx</code> — React island (client:only)</div>
-              <div class="tree-file"><code>src/components/PEGrid.tsx</code> — pure SVG, presentational</div>
-              <div class="tree-file"><code>src/components/Controls.tsx</code> — transport bar</div>
-              <div class="tree-file"><code>src/components/MatrixInput.tsx</code> — A/B matrix editors</div>
-              <div class="tree-file"><code>public/tiny_tpu.mjs</code>, <code>public/tiny_tpu.wasm</code> — compiled artifacts</div>
+              <div class="tree-file"><code>src/lib/state-schema.ts</code>: TypeScript types mirroring docs/STATE_SCHEMA.md</div>
+              <div class="tree-file"><code>src/lib/wasm-loader.ts</code>: typed async wrapper for WASM embind API</div>
+              <div class="tree-file"><code>src/hooks/useTinyTpu.ts</code>: CycleState[] + playback state</div>
+              <div class="tree-file"><code>src/components/Visualizer.tsx</code>: React island (client:only)</div>
+              <div class="tree-file"><code>src/components/PEGrid.tsx</code>: pure SVG, presentational</div>
+              <div class="tree-file"><code>src/components/Controls.tsx</code>: transport bar</div>
+              <div class="tree-file"><code>src/components/MatrixInput.tsx</code>: A/B matrix editors</div>
+              <div class="tree-file"><code>public/tiny_tpu.mjs</code>, <code>public/tiny_tpu.wasm</code>: compiled artifacts</div>
             </div>
           </div>
           <div class="tree-group">
@@ -139,7 +139,7 @@ const peFields = [
               <span class="tree-comment">Extended documentation</span>
             </div>
             <div class="tree-children">
-              <div class="tree-file"><code>STATE_SCHEMA.md</code> — canonical state contract (must sync with state-schema.ts)</div>
+              <div class="tree-file"><code>STATE_SCHEMA.md</code>: canonical state contract (must sync with state-schema.ts)</div>
             </div>
           </div>
         </div>
@@ -211,7 +211,7 @@ const peFields = [
 
         <div class="callout callout--amber">
           <strong>The actIn derivation:</strong> the debug bus exposes
-          <code>dbg_act[i][j]</code>, which is <code>pe[i][j].act_out</code> — the
+          <code>dbg_act[i][j]</code>, which is <code>pe[i][j].act_out</code>, the
           <em>registered output</em> of the passthrough, not the input of the current
           cycle. The harness computes <code>actIn</code> as
           <code>(j==0) ? dbg_west[i] : dbg_act[i][j-1]</code>, which is the correct
@@ -233,8 +233,7 @@ const peFields = [
         <h3>1. RTL lint (always clean)</h3>
         <pre class="code-block">verilator --lint-only -Wall rtl/*.sv</pre>
         <p>
-          Run this before every commit touching RTL. Any warning is a build failure —
-          <code>UNOPTFLAT</code> (combinational loop), <code>BLKANDNBLK</code>
+          Run this before every commit touching RTL. Any warning is a build failure. <code>UNOPTFLAT</code> (combinational loop), <code>BLKANDNBLK</code>
           (mixed blocking/non-blocking), and inferred latches are all blocking
           conditions.
         </p>
@@ -248,7 +247,7 @@ cd sim && make MODULE=test_top TOPLEVEL=tiny_tpu_top \
         <p>
           The cocotb test suite runs the RTL via Verilator's Python bindings and
           asserts bit-exact equality with <code>sim/golden.py</code> for 20+ random
-          int8 matrix pairs. A failing test means the RTL is wrong — do not proceed.
+          int8 matrix pairs. A failing test means the RTL is wrong. Do not proceed.
         </p>
 
         <h3>3. WASM build</h3>
@@ -264,7 +263,7 @@ cd sim && make MODULE=test_top TOPLEVEL=tiny_tpu_top \
           <strong>Rebuild WASM after any RTL change.</strong> The WASM binary is a
           compiled snapshot of the RTL at build time. If you modify
           <code>rtl/*.sv</code>, re-run <code>bash wasm/build.sh</code> before testing
-          the frontend — otherwise the browser is running stale hardware.
+          the frontend; otherwise the browser is running stale hardware.
         </div>
 
         <h3>4. Frontend (web/)</h3>
@@ -294,7 +293,7 @@ cd web && pnpm lint && pnpm typecheck && pnpm build</pre>
             <div class="decision-title">RTL is the single source of truth</div>
             <p>
               The frontend never reimplements the matmul in JavaScript for the
-              animation. It reads state out of the compiled WASM binary — a binary
+              animation. It reads state out of the compiled WASM binary, a binary
               that is itself a compiled representation of the SystemVerilog.
               If the RTL is wrong, the visualizer shows the wrong thing.
               If the RTL is right (golden-verified), the visualizer is right.
@@ -308,7 +307,7 @@ cd web && pnpm lint && pnpm typecheck && pnpm build</pre>
               by name, but the names change across synthesis tools and Verilator versions.
               TinyTPU instead exposes a stable, explicitly-typed debug output bus on
               <code>tiny_tpu_top</code>. The harness reads these ports after each
-              <code>eval()</code> — the same way any downstream module would read outputs.
+              <code>eval()</code>, the same way any downstream module would read outputs.
               This keeps the viz interface stable and the RTL synthesizable.
             </p>
           </div>
@@ -317,7 +316,7 @@ cd web && pnpm lint && pnpm typecheck && pnpm build</pre>
             <div class="decision-title">WASM is client-only, always</div>
             <p>
               Astro builds the site at compile time. Importing WASM during SSR causes
-              a <code>window is not defined</code> error — WASM requires a browser
+              a <code>window is not defined</code> error; WASM requires a browser
               environment. Every React island that touches WASM uses
               <code>client:only="react"</code> and loads the module inside a
               <code>useEffect</code> behind a <code>typeof window !== "undefined"</code>
@@ -330,7 +329,7 @@ cd web && pnpm lint && pnpm typecheck && pnpm build</pre>
             <p>
               <code>sim.run()</code> steps the WASM through the full 14-cycle matmul
               and returns the complete <code>CycleState[]</code> array once. The
-              visualizer animates by indexing into this pre-computed array — the WASM
+              visualizer animates by indexing into this pre-computed array. The WASM
               does not execute on every animation frame. This decouples rendering
               performance from simulation throughput.
             </p>
@@ -344,12 +343,12 @@ cd web && pnpm lint && pnpm typecheck && pnpm build</pre>
       <div class="container doc-nav-links">
         <a href="/docs/the-systolic-array" class="doc-nav-card doc-nav-card--prev">
           <span class="doc-nav-label">Previous</span>
-          <span class="doc-nav-title">← The systolic array</span>
+          <span class="doc-nav-title">&larr; The systolic array</span>
           <span class="doc-nav-desc">Weight-stationary dataflow and skew</span>
         </a>
         <a href={GITHUB_URL} class="doc-nav-card doc-nav-card--next" target="_blank" rel="noopener noreferrer">
           <span class="doc-nav-label">Source</span>
-          <span class="doc-nav-title">View on GitHub →</span>
+          <span class="doc-nav-title">View on GitHub &rarr;</span>
           <span class="doc-nav-desc">RTL, harness, tests, and frontend</span>
         </a>
       </div>

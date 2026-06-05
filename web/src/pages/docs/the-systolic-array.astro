@@ -28,7 +28,7 @@ const skewTable = [
 ---
 
 <Layout
-  title="The Systolic Array — TinyTPU"
+  title="The Systolic Array | TinyTPU"
   description="Weight-stationary dataflow, diagonal skew, and why TPUs use systolic arrays. Conceptual primer with live visualizer embed."
 >
   <div class="page">
@@ -63,7 +63,7 @@ const skewTable = [
         <h1 class="doc-title">How a systolic array computes a matrix multiply</h1>
         <p class="doc-lead">
           The weight-stationary systolic array is the dataflow that Google's TPU-v1 uses.
-          TinyTPU implements this dataflow in real synthesizable SystemVerilog — not a
+          TinyTPU implements this dataflow in real synthesizable SystemVerilog, not a
           simulation shortcut. This page explains why the design works, what the diagonal
           skew is, and why TPUs use this structure.
         </p>
@@ -94,21 +94,21 @@ const skewTable = [
         </p>
         <ul class="signal-list">
           <li>
-            <code>act_in</code> — the activation value arriving from the left.
+            <code>act_in</code>: the activation value arriving from the left.
             The PE passes it rightward (<code>act_out &lt;= act_in</code>, registered).
           </li>
           <li>
-            <code>psum_in</code> — the partial sum arriving from above.
+            <code>psum_in</code>: the partial sum arriving from above.
             The PE adds its own product and sends the total downward.
           </li>
           <li>
-            <code>weight_reg</code> — the <em>stationary</em> weight.
+            <code>weight_reg</code>: the <em>stationary</em> weight.
             This does not change during a run; it is loaded once before streaming starts.
           </li>
         </ul>
         <p>
           Because weight and activation each touch the PE on the same clock cycle, there
-          is no memory access during computation — the memory bandwidth bottleneck that
+          is no memory access during computation. The memory bandwidth bottleneck that
           plagues conventional processors is completely absent.
         </p>
       </div>
@@ -163,14 +163,14 @@ const skewTable = [
         <p>
           This dataflow has a critical advantage: because B never moves, every PE can
           accumulate partial sums into a running total without waiting for memory.
-          Only A and the growing partial sums move — and they move in lockstep with
+          Only A and the growing partial sums move, in lockstep with
           the clock, the heartbeat that gives the systolic array its name.
         </p>
         <div class="callout callout--amber">
           <strong>Why Google chose this for TPU-v1:</strong> in a deep learning
           inference pass, model weights are loaded once per forward pass and reused
           for every input example in a batch. Weight-stationary dataflow perfectly
-          exploits this reuse — you pay the memory bandwidth cost of loading B once,
+          exploits this reuse. You pay the memory bandwidth cost of loading B once,
           then multiply it against thousands of A matrices "for free" in subsequent
           passes.
         </div>
@@ -180,7 +180,7 @@ const skewTable = [
     <!-- DIAGONAL SKEW -->
     <section class="doc-section border-b border-hairline">
       <div class="container doc-body">
-        <h2>The diagonal skew — why it exists</h2>
+        <h2>The diagonal skew: why it exists</h2>
         <p>
           Here is the problem: PE[0][0] is adjacent to the left edge, but PE[0][3]
           is three hops to the right. For the matmul to be correct, element A[0][k]
@@ -219,20 +219,20 @@ const skewTable = [
         </div>
 
         <p>
-          The diagonal is not artistic — it is a timing requirement. If you send all rows
+          The diagonal is not artistic; it is a timing requirement. If you send all rows
           simultaneously (no skew), A[1][0] arrives at PE[1][0] one cycle before
           B[0][0]'s partial sum has propagated down from PE[0][0], corrupting the output.
         </p>
         <p>
           This is why the waveform from a real RTL simulation of TinyTPU shows a moving
-          diagonal of non-zero <code>act_west</code> values — that diagonal is the skew,
+          diagonal of non-zero <code>act_west</code> values. That diagonal is the skew,
           and it is the visual signature of a correctly operating systolic array.
         </p>
         <div class="callout callout--cyan">
           <strong>Where the skew is applied:</strong> <code>controller.sv</code>, not
           <code>systolic_array.sv</code>. The array module wires <code>act_west[i]</code>
           directly to row i's left edge. The controller is responsible for
-          presenting the right element at the right cycle — the array is a dumb grid,
+          presenting the right element at the right cycle. The array is a dumb grid,
           which is exactly what makes it cheap to implement in silicon.
         </div>
 
@@ -276,16 +276,16 @@ const skewTable = [
     <!-- TILING -->
     <section class="doc-section border-b border-hairline">
       <div class="container doc-body">
-        <h2>Tiling — matrices larger than the array</h2>
+        <h2>Tiling: matrices larger than the array</h2>
         <p>
-          A 4×4 array holds 16 weights. An 8×8 matrix multiply requires 64 weights
-          — more than the array can hold at once. The solution is <em>tiling</em>:
+          A 4×4 array holds 16 weights. An 8×8 matrix multiply requires 64 weights,
+          more than the array can hold at once. The solution is <em>tiling</em>:
           split the large matmul into 4×4 tiles and run multiple passes, accumulating
           partial results in software between passes.
         </p>
         <p>
           In TinyTPU's L3 view, the TypeScript orchestration layer calls the 4×4 WASM
-          core repeatedly — once per tile pair — and accumulates the results. Each
+          core repeatedly, once per tile pair, and accumulates the results. Each
           individual tile still runs on real RTL, so the MAC arithmetic is hardware-correct.
           Only the inter-tile accumulation happens in software, and that is documented
           clearly in the UI.
@@ -323,12 +323,12 @@ const skewTable = [
       <div class="container doc-nav-links">
         <a href="/docs/how-it-works" class="doc-nav-card doc-nav-card--prev">
           <span class="doc-nav-label">Previous</span>
-          <span class="doc-nav-title">← How it works</span>
-          <span class="doc-nav-desc">The RTL→WASM→browser pipeline</span>
+          <span class="doc-nav-title">&larr; How it works</span>
+          <span class="doc-nav-desc">The RTL to WASM to browser pipeline</span>
         </a>
         <a href="/docs/architecture" class="doc-nav-card doc-nav-card--next">
           <span class="doc-nav-label">Next</span>
-          <span class="doc-nav-title">Architecture →</span>
+          <span class="doc-nav-title">Architecture &rarr;</span>
           <span class="doc-nav-desc">Monorepo layout, state contract, build flow</span>
         </a>
       </div>
