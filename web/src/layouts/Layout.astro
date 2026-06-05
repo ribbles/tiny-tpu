@@ -6,6 +6,8 @@ interface Props {
   ogImage?: string;
   /** Override canonical URL. Defaults to current page URL. */
   canonical?: string;
+  /** Emit a <link rel="preload"> for tiny_tpu.wasm on pages that use WASM. */
+  preloadWasm?: boolean;
 }
 
 const {
@@ -13,6 +15,7 @@ const {
   description = "TPU simulator: SystemVerilog compiled to WebAssembly. Learn how a TPU works with a live systolic array visualizer running real RTL in your browser.",
   ogImage,
   canonical,
+  preloadWasm = false,
 } = Astro.props;
 
 const site = Astro.site?.toString().replace(/\/$/, "") ?? "";
@@ -72,6 +75,9 @@ const structuredData = {
     <meta name="description" content={description} />
     <link rel="canonical" href={pageUrl} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {preloadWasm && (
+      <link rel="preload" as="fetch" href="/tiny_tpu.wasm" crossorigin="anonymous" />
+    )}
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
