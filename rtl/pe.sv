@@ -16,16 +16,16 @@ module pe #(
     parameter int DATA_W = 8,   // signed activation / weight width (bits)
     parameter int ACC_W  = 32   // signed accumulator width (bits)
 ) (
-    input  logic                     clk,
-    input  logic                     rst_n,
+    input  wire                     clk,
+    input  wire                     rst_n,
 
     // Weight load
-    input  logic                     load_weight,
-    input  logic signed [DATA_W-1:0] weight_in,
+    input  wire                     load_weight,
+    input  wire signed [DATA_W-1:0] weight_in,
 
     // Dataflow inputs
-    input  logic signed [DATA_W-1:0] act_in,    // activation from the left
-    input  logic signed [ACC_W-1:0]  psum_in,   // partial sum from above
+    input  wire signed [DATA_W-1:0] act_in,    // activation from the left
+    input  wire signed [ACC_W-1:0]  psum_in,   // partial sum from above
 
     // Dataflow outputs (registered)
     output logic signed [DATA_W-1:0] act_out,   // activation to the right

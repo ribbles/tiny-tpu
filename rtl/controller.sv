@@ -21,12 +21,12 @@ module controller #(
     parameter int N      = 4,
     parameter int DATA_W = 8
 ) (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic start,
+    input  wire clk,
+    input  wire rst_n,
+    input  wire start,
 
-    input  logic signed [DATA_W-1:0] a_buf [N][N],
-    input  logic signed [DATA_W-1:0] b_buf [N][N],
+    input  wire signed [DATA_W-1:0] a_buf [N][N],
+    input  wire signed [DATA_W-1:0] b_buf [N][N],
 
     output logic                     load_weight,
     output logic signed [DATA_W-1:0] weight_col  [N],

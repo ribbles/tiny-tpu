@@ -22,12 +22,12 @@ module tiny_tpu_top #(
     parameter int DATA_W = 8,
     parameter int ACC_W  = 32
 ) (
-    input  logic clk,
-    input  logic rst_n,
-    input  logic start,
+    input  wire clk,
+    input  wire rst_n,
+    input  wire start,
 
-    input  logic signed [DATA_W-1:0] a_in [N][N],
-    input  logic signed [DATA_W-1:0] b_in [N][N],
+    input  wire signed [DATA_W-1:0] a_in [N][N],
+    input  wire signed [DATA_W-1:0] b_in [N][N],
 
     output logic signed [ACC_W-1:0]  c_buf [N][N],
 

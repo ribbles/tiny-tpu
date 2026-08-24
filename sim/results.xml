@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1787544410" />
+    <testcase name="test_mnist_hardware_tile" classname="test_tpu_mnist" file="D:\git\FPGA\machine-learning\tpu-lesson\tiny-tpu\sim\test_tpu_mnist.py" lineno="34" time="0.3463468551635742" sim_time_ns="380.0" ratio_time="1097.1660182118067" />
+  </testsuite>
+</testsuites>

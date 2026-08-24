@@ -37,15 +37,15 @@ module systolic_array #(
     parameter int DATA_W = 8,   // signed activation / weight width (bits)
     parameter int ACC_W  = 32   // signed accumulator width (bits)
 ) (
-    input  logic clk,
-    input  logic rst_n,
+    input  wire clk,
+    input  wire rst_n,
 
     // Weight loading: drive load_weight=1 for N cycles with weight_col[i]=B[i][col].
-    input  logic                     load_weight,
-    input  logic signed [DATA_W-1:0] weight_col [N],  // one column of B per cycle
+    input  wire                     load_weight,
+    input  wire signed [DATA_W-1:0] weight_col [N],  // one column of B per cycle
 
     // Left-edge activations entering this cycle (row-skewed by the controller)
-    input  logic signed [DATA_W-1:0] act_west [N],
+    input  wire signed [DATA_W-1:0] act_west [N],
 
     // Bottom-edge results (one per column); valid after the drain phase
     output logic signed [ACC_W-1:0]  psum_south [N],

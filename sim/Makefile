@@ -1,24 +1,26 @@
-# Cocotb/Verilator simulation Makefile
-#
-# Default: run test_pe against the pe module.
-# Override all three variables on the command line for other suites:
-#
-#   make MODULE=test_systolic_array TOPLEVEL=systolic_array \
-#        VERILOG_SOURCES="../rtl/pe.sv ../rtl/systolic_array.sv"
-#
-#   make MODULE=test_top TOPLEVEL=tiny_tpu_top \
-#        VERILOG_SOURCES="../rtl/pe.sv ../rtl/systolic_array.sv \
-#                         ../rtl/controller.sv ../rtl/tiny_tpu_top.sv"
+# Flexible Multi-Target Verification Makefile
 
-SIM           ?= verilator
+SIM           ?= icarus
 TOPLEVEL_LANG ?= verilog
 
-# Paths are relative to sim/ (where make is run).
-VERILOG_SOURCES ?= $(abspath ../rtl/pe.sv)
-TOPLEVEL        ?= pe
-MODULE          ?= test_pe
+# Add your new source module list here
+VERILOG_SOURCES = ../rtl/pe.sv \
+                  ../rtl/controller.sv \
+                  ../rtl/systolic_array.sv \
+                  ../rtl/tpu_uart_receiver.sv \
+                  ../rtl/tpu_command_decoder.sv \
+                  ../rtl/tpu_uart_transmitter.sv \
+                  ../rtl/tpu_core_hardware_wrapper.sv \
+                  ../rtl/tpu_top_shell.sv
 
-# Waveform traces land in sim_build/dump.fst; open with gtkwave.
-WAVES ?= 1
+# MINICONDA ENVIRONMENT EXTENSION CLAMP SETTINGS
+export PYTHONHOME = C:/Users/wolfpack/Miniconda3/envs/tpu-lesson
+export PYTHONPATH = C:/Users/wolfpack/Miniconda3/envs/tpu-lesson/Lib/site-packages
+COCOTB_MAKEFILES_DIR = C:/Users/wolfpack/Miniconda3/envs/tpu-lesson/Lib/site-packages/cocotb_tools/makefiles
 
-include $(shell cocotb-config --makefiles)/Makefile.sim
+# DEFAULT TARGET FLAGS (Can be overridden via command line variables)
+TOPLEVEL ?= tpu_top_shell
+MODULE   ?= test_decoder_core
+WAVES    ?= 1
+
+include $(COCOTB_MAKEFILES_DIR)/Makefile.sim
