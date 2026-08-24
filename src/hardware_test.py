@@ -4,6 +4,11 @@ import time
 import serial
 import numpy as np
 
+try:
+    from unified_shell import run_unified_row_matmul
+except ModuleNotFoundError:
+    from src.unified_shell import run_unified_row_matmul
+
 # --- 1. CONFIGURATION PARAMETERS ---
 COM_PORT = 'COM9' 
 BAUD_RATE = 3000000 
@@ -67,48 +72,16 @@ def run_full_silicon_validation():
             
             # Step down the 784 inner-product pixel dimensions 4 items at a time
             for inner_step in range(0, 784, 4):
-                
-                # 1. TRANSMIT WEIGHT TILE CHUNK (Opcode 0x01)
-                tile_B = W_padded[inner_step:inner_step+4, col_block:col_block+4]
-                for col in range(4):
-                    weight_frame = bytearray([
-                        0x01,
-                        int(tile_B[0, col]) & 0xFF,
-                        int(tile_B[1, col]) & 0xFF,
-                        int(tile_B[2, col]) & 0xFF,
-                        int(tile_B[3, col]) & 0xFF
-                    ])
-                    ser.write(weight_frame)
-                ser.flush()
-                
-                # 2. STREAM ACTIVATION CHUNK WITH CLOCK SKEW (Opcode 0x02)
-                tile_A = image[inner_step:inner_step+4]
-                for cycle in range(7):
-                    v0 = tile_A[0] if cycle >= 0 and cycle < 4 else 0
-                    v1 = tile_A[1] if cycle >= 1 and cycle < 5 else 0
-                    v2 = tile_A[2] if cycle >= 2 and cycle < 6 else 0
-                    v3 = tile_A[3] if cycle >= 3 and cycle < 7 else 0
-                    
-                    activation_frame = bytearray([
-                        0x02,
-                        int(v0) & 0xFF,
-                        int(v1) & 0xFF,
-                        int(v2) & 0xFF,
-                        int(v3) & 0xFF
-                    ])
-                    ser.write(activation_frame)
-                ser.flush()
-                
-                # 3. BACK-CHANNEL RECEPTION WINDOW (Read 16 Bytes / 128 Bits)
-                # On the 7th cycle, the FSM triggers tpu_uart_transmitter.sv to stream back
-                # the 4 calculated 32-bit column sub-accumulators immediately.
-                raw_back_bytes = ser.read(16)
-                if len(raw_back_bytes) == 16:
-                    tile_output = np.frombuffer(raw_back_bytes, dtype=np.int32)
-                    # Accumulate the hardware sums into our global tracking matrix row
-                    image_accumulators[col_block:col_block+4] += tile_output
-                else:
+                tile_A = image[inner_step:inner_step+4].astype(np.int32)
+                tile_B = W_padded[inner_step:inner_step+4, col_block:col_block+4].astype(np.int32)
+
+                try:
+                    tile_output = run_unified_row_matmul(ser, tile_A, tile_B)
+                except TimeoutError:
                     print(f"⚠️ Communications Frame Timeout at image {idx}, step {inner_step}")
+                    continue
+
+                image_accumulators[col_block:col_block+4] += tile_output
                     
         # Drop the 2 padding columns back down to extract our 10 real digit scores
         final_scores = image_accumulators[:10]

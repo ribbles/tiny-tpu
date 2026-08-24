@@ -2,30 +2,24 @@ import serial
 import numpy as np
 import tensorflow as tf
 
+try:
+    from unified_shell import run_unified_matmul
+except ModuleNotFoundError:
+    from src.unified_shell import run_unified_matmul
+
 # 1. Connect to the Tang Nano 9K USB-C serial port
 # (Check Device Manager or ls /dev/ to find your specific COM port)
 ser = serial.Serial('COM3', baudrate=3000000, timeout=5)
 
 def run_tpu_matmul(matrix_a, matrix_b):
     """
-    Takes standard tensors, quantizes them to INT8, 
-    and sends them across USB-C to the physical Verilog array.
+    Tile a host-side matmul over the current 0x03 shell protocol.
     """
-    # Cast/Quantize your framework tensors to raw 8-bit bytes
-    a_bytes = matrix_a.numpy().astype(np.int8).tobytes()
-    b_bytes = matrix_b.numpy().astype(np.int8).tobytes()
-    
-    # Send Command Protocol: OPCODE (0x03 for compute) + Matrix Data
-    ser.write(b'\x03') 
-    ser.write(a_bytes)
-    ser.write(b_bytes)
-    
-    # Read back the 32-bit (4 byte) results from the hardware accumulators
-    expected_output_size = matrix_a.shape[0] * matrix_b.shape[1] * 4
-    raw_result = ser.read(expected_output_size)
-    
-    # Reconstruct the raw binary stream back into a standard Tensor
-    result_array = np.frombuffer(raw_result, dtype=np.int32).reshape(matrix_a.shape[0], matrix_b.shape[1])
+    result_array = run_unified_matmul(
+        ser,
+        matrix_a.numpy().astype(np.int8),
+        matrix_b.numpy().astype(np.int8),
+    )
     return tf.convert_to_tensor(result_array, dtype=tf.int32)
 
 # --- Standard TensorFlow/Keras Inference Step ---
