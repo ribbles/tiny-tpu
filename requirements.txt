@@ -2,3 +2,4 @@ numpy
 pyserial
 tensorflow
 requests
+cocotb

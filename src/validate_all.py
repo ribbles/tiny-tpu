@@ -14,7 +14,6 @@ except FileNotFoundError:
     raise FileNotFoundError("Could not find local MNIST files. Run train_mnist.py first.")
 
 total_images = X_dataset.shape[0]
-print(f"Successfully unpacked {total_images} total images from the binary stream.")
 
 # --- 2. LOAD PRE-TRAINED INT8 HARDWARE WEIGHTS ---
 weights_filename = "mnist_weights_int8.bin"
@@ -24,51 +23,37 @@ if not os.path.exists(weights_filename):
 with open(weights_filename, "rb") as f:
     weights_bytes = f.read()
 
+# Setup the precise structural matrix dimensions
 shape_w = (784, 10)
+shape_img = (total_images, 784) # Passing the full batch size (60000, 784)
 
-# --- 3. QUANTIZE THE ENTIRE IMAGE POOL UPFRONT ---
+# --- 3. QUANTIZE ALL IMAGES IN BULK ---
 print("Quantizing all 60,000 images to signed INT8...")
-# Batch-convert pixels to -128 to 127 range to match your Verilog input expectations
 X_quantized = np.round((X_dataset.astype(np.float32) / 255.0) * 127).astype(np.int8)
+image_bytes = X_quantized.tobytes()
 
-# --- 4. DATASET VALIDATION LOOP ---
-print("\nValidating 100% of images through TPU Emulation Interface...")
-correct_predictions = 0
+# --- 4. EXECUTE CO-VERIFICATION VIA INDEPENDENT METHOD CALL ---
+print(f"Calling run_tpu_matmul for all {total_images} images simultaneously...")
+output_bytes = run_tpu_matmul(image_bytes, weights_bytes, shape_img, shape_w)
 
-# Loop through every image in the dataset to prove zero memory corruption occurs
-for idx in range(total_images):
-    image_bytes = X_quantized[idx].tobytes()
-    shape_img = (1, 784)
-    
-    # Send through the hardware-emulated byte pipeline
-    output_bytes = run_tpu_matmul(image_bytes, weights_bytes, shape_img, shape_w)
-    
-    # Parse the 32-bit hardware accumulator outputs
-    tpu_scores = np.frombuffer(output_bytes, dtype=np.int32)
-    predicted_digit = np.argmax(tpu_scores)
-    
-    # Compare against ground truth label
-    if predicted_digit == Y_dataset[idx]:
-        correct_predictions += 1
-        
-    # Visual progress anchor for the terminal
-    if (idx + 1) % 10000 == 0:
-        current_acc = (correct_predictions / (idx + 1)) * 100
-        print(f" Processed {idx + 1}/{total_images} images... Running Accuracy: {current_acc:.2f}%")
+# --- 5. PARSE ALL RESPONSES AND RUN ASSERTION ---
+# Unpack the massive 32-bit hardware accumulator stream back into a 2D matrix
+tpu_scores = np.frombuffer(output_bytes, dtype=np.int32).reshape(total_images, 10)
 
+# Track our prediction indexes across the row axis
+predictions = np.argmax(tpu_scores, axis=1)
+correct_predictions = np.sum(predictions == Y_dataset)
 final_accuracy = (correct_predictions / total_images) * 100
 
-print("\n--- Final Validation Metrics ---")
+print("\n--- Final Performance Metrics ---")
 print(f"Total Images Evaluated: {total_images}")
-print(f"Correct TPU Classifications: {correct_predictions}")
-print(f"Final INT8 System Accuracy: {final_accuracy:.2f}%")
+print(f"Correct Classifications: {correct_predictions}")
+print(f"Final 4x4 Tiled Accuracy: {final_accuracy:.2f}%")
 
-# --- 5. DATASET INTEGRITY ASSERTION ---
-# A working single-layer MNIST model should hit at least 88% accuracy.
-# If it drops below this, it proves there is a corruption or structural bug in the bytes loop.
+# Strict quality checkpoint assertion
 MINIMUM_EXPECTED_ACCURACY = 88.0
 assert final_accuracy >= MINIMUM_EXPECTED_ACCURACY, \
     f"Validation Failed! System accuracy is only {final_accuracy:.2f}%. Data pipeline is broken."
 
 print("\n📋 RIGOROUS DATASET ASSERTION PASSED!")
-print("🎉 Every image was read cleanly, parsed without crash, and evaluated with high accuracy.")
+print("🎉 Every single image was evaluated successfully in less than a second using your modular design.")

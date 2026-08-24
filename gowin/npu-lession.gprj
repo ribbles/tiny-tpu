@@ -1,0 +1,20 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW1NR-9C" pn="GW1NR-LV9QN88PC6/I5">gw1nr9c-004</Device>
+    <FileList>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/controller.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/pe.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/systolic_array.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tiny_tpu_top.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tpu_command_decoder.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tpu_core_hardware_wrapper.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tpu_top_shell.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tpu_uart_receiver.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tpu_uart_transmitter.sv" type="file.verilog" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tangnano9k.cst" type="file.cst" enable="1"/>
+        <File path="D:/git/FPGA/machine-learning/tpu-lesson/tiny-tpu/rtl/tangnano9k.sdc" type="file.sdc" enable="1"/>
+    </FileList>
+</Project>

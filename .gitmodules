@@ -1,0 +1,3 @@
+[submodule "tiny-tpu"]
+	path = tiny-tpu
+	url = https://github.com/deaneeth/tiny-tpu
