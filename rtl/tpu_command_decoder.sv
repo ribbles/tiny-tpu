@@ -18,75 +18,56 @@ module tpu_command_decoder (
 );
 
     // --- FSM STATES ---
-    localparam STATE_IDLE      = 3'b000;
-    localparam STATE_LOAD_B    = 3'b010;
-    localparam STATE_STREAM_A  = 3'b011;
-    localparam STATE_RUN_CORE  = 3'b100;
+    localparam STATE_IDLE      = 2'b00;
+    localparam STATE_UNIFIED   = 2'b01;
+    localparam STATE_RUN_CORE  = 2'b10;
 
-    reg [2:0] state;
-    reg [1:0] sub_index;
-    reg [2:0] stream_counter;
+    reg [1:0] state;
+    reg [4:0] sub_index; // 5 bits to count from 0 to 31 (32 bytes total)
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state                  <= STATE_IDLE;
-            sub_index              <= 2'd0;
-            stream_counter         <= 3'd0;
+            sub_index              <= 5'd0;
             tpu_start              <= 1'b0;
             flat_a_in              <= 32'd0;
             flat_b_in              <= 32'd0;
             output_score_register  <= 128'd0;
         end else begin
-            tpu_start <= 1'b0; // Default auto-clear pulse flag
+            tpu_start <= 1'b0; // Default auto-clear single cycle pulse
 
             case (state)
                 STATE_IDLE: begin
-                    sub_index      <= 2'd0;
-                    stream_counter <= 3'd0;
-                    if (rx_valid) begin
-                        case (rx_byte)
-                            8'h01:   state <= STATE_LOAD_B;
-                            8'h02:   state <= STATE_STREAM_A;
-                            default: state <= STATE_IDLE;
-                        endcase
+                    sub_index <= 5'd0;
+                    if (rx_valid && (rx_byte == 8'h03)) begin // Opcode 0x03: Unified Compute Block
+                        state <= STATE_UNIFIED;
                     end
                 end
 
-                STATE_LOAD_B: begin
+                STATE_UNIFIED: begin
                     if (rx_valid) begin
-                        case (sub_index)
-                            2'd0: flat_b_in[7:0]   <= rx_byte;
-                            2'd1: flat_b_in[15:8]  <= rx_byte;
-                            2'd2: flat_b_in[23:16] <= rx_byte;
-                            2'd3: flat_b_in[31:24] <= rx_byte;
-                        endcase
-                        
-                        if (sub_index == 2'd3) begin
-                            tpu_start <= 1'b1; 
-                            state     <= STATE_IDLE;
-                        end else begin
-                            sub_index <= sub_index + 1'b1;
+                        // First 16 bytes (0-15) are mapped to the weights matrix (B)
+                        if (sub_index < 5'd16) begin
+                            case (sub_index[1:0])
+                                2'd0: flat_b_in[7:0]   <= rx_byte;
+                                2'd1: flat_b_in[15:8]  <= rx_byte;
+                                2'd2: flat_b_in[23:16] <= rx_byte;
+                                2'd3: flat_b_in[31:24] <= rx_byte;
+                            endcase
                         end
-                    end
-                end
+                        // Next 16 bytes (16-31) are mapped to the activations matrix (A)
+                        else begin
+                            case (sub_index[1:0])
+                                2'd0: flat_a_in[7:0]   <= rx_byte;
+                                2'd1: flat_a_in[15:8]  <= rx_byte;
+                                2'd2: flat_a_in[23:16] <= rx_byte;
+                                2'd3: flat_a_in[31:24] <= rx_byte;
+                            endcase
+                        end
 
-                STATE_STREAM_A: begin
-                    if (rx_valid) begin
-                        case (sub_index)
-                            2'd0: flat_a_in[7:0]   <= rx_byte;
-                            2'd1: flat_a_in[15:8]  <= rx_byte;
-                            2'd2: flat_a_in[23:16] <= rx_byte;
-                            2'd3: flat_a_in[31:24] <= rx_byte;
-                        endcase
-                        
-                        if (sub_index == 2'd3) begin
-                            tpu_start <= 1'b1; 
-                            sub_index <= 2'd0;
-                            if (stream_counter == 3'd6) begin
-                                state <= STATE_RUN_CORE;
-                            end else begin
-                                stream_counter <= stream_counter + 1'b1;
-                            end
+                        if (sub_index == 5'd31) begin
+                            tpu_start <= 1'b1; // Trigger both fields simultaneously!
+                            state     <= STATE_RUN_CORE;
                         end else begin
                             sub_index <= sub_index + 1'b1;
                         end

@@ -1,19 +1,17 @@
 module tpu_uart_receiver #(
-    parameter CLK_FREQ = 50000000, // 50 MHz default clock for Tang Nano 9K
-    parameter BAUD_RATE = 3000000  // 3 Mbps matches CH552 USB-to-UART maximum stable speed
+    parameter CLK_FREQ = 27000000, 
+    parameter BAUD_RATE = 3000000  
 )(
     input  wire       clk,
     input  wire       rst_n,
-    input  wire       uart_rx,     // Physical RX pin from CH552 USB bridge
-    output reg  [7:0] tpu_data,    // Unpacked 8-bit byte output stream
-    output reg        tpu_valid    // Pulsed high for 1 cycle when byte is ready
+    input  wire       uart_rx,     
+    output reg  [7:0] tpu_data,    
+    output reg        tpu_valid    
 );
 
-    // Calculate local clock ticks required per bit period (50MHz / 3MHz = ~16.6)
-    localparam BIT_PERIOD = CLK_FREQ / BAUD_RATE;
-    localparam HALF_PERIOD = BIT_PERIOD / 2;
+    localparam BIT_PERIOD  = 16'd9; // 27MHz / 3Mbps = 9 cycles exactly
+    localparam HALF_PERIOD = 16'd4; // Center point sampling index step
 
-    // FSM States
     localparam STATE_IDLE  = 2'b00;
     localparam STATE_START = 2'b01;
     localparam STATE_DATA  = 2'b10;
@@ -24,7 +22,6 @@ module tpu_uart_receiver #(
     reg [2:0]  bit_cnt;
     reg [7:0]  rx_shift;
 
-    // Synchronise and debouncer registers for async physical RX input
     reg rx_sync_0, rx_sync_1;
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
@@ -36,7 +33,6 @@ module tpu_uart_receiver #(
         end
     end
 
-    // Clock-driven UART Receiver FSM Core Loop
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             state     <= STATE_IDLE;
@@ -46,24 +42,24 @@ module tpu_uart_receiver #(
             tpu_data  <= 8'd0;
             tpu_valid <= 1'b0;
         end else begin
-            tpu_valid <= 1'b0; // Default fallback assignment to maintain a clean pulse
+            tpu_valid <= 1'b0; 
 
             case (state)
                 STATE_IDLE: begin
                     clk_cnt <= 16'd0;
                     bit_cnt <= 3'd0;
-                    if (rx_sync_1 == 1'b0) begin // Start bit detected (falling edge baseline)
+                    if (rx_sync_1 == 1'b0) begin 
                         state <= STATE_START;
                     end
                 end
 
                 STATE_START: begin
                     if (clk_cnt == HALF_PERIOD) begin
-                        if (rx_sync_1 == 1'b0) begin // Verify start line remains low at the center point
+                        if (rx_sync_1 == 1'b0) begin 
                             clk_cnt <= 16'd0;
                             state   <= STATE_DATA;
                         end else begin
-                            state   <= STATE_IDLE; // False alarm filter reset
+                            state   <= STATE_IDLE; 
                         end
                     end else begin
                         clk_cnt <= clk_cnt + 1'b1;
@@ -71,9 +67,9 @@ module tpu_uart_receiver #(
                 end
 
                 STATE_DATA: begin
-                    if (clk_cnt == BIT_PERIOD - 1) begin
+                    if (clk_cnt == BIT_PERIOD - 1'b1) begin
                         clk_cnt  <= 16'd0;
-                        rx_shift <= {rx_sync_1, rx_shift[7:1]}; // UART standard LSB-first shift alignment
+                        rx_shift <= {rx_sync_1, rx_shift[7:1]}; 
                         
                         if (bit_cnt == 3'd7) begin
                             state <= STATE_STOP;
@@ -86,11 +82,11 @@ module tpu_uart_receiver #(
                 end
 
                 STATE_STOP: begin
-                    if (clk_cnt == BIT_PERIOD - 1) begin
+                    if (clk_cnt == BIT_PERIOD - 1'b1) begin
                         clk_cnt <= 16'd0;
-                        if (rx_sync_1 == 1'b1) begin // Verify valid stop framing line configuration
+                        if (rx_sync_1 == 1'b1) begin 
                             tpu_data  <= rx_shift;
-                            tpu_valid <= 1'b1;      // Flag valid byte stream to downstream storage blocks
+                            tpu_valid <= 1'b1;      
                         end
                         state <= STATE_IDLE;
                     end else begin
