@@ -7,7 +7,6 @@ matmul_golden accepts any compatible shapes so L3 tiling can be verified here.
 """
 
 import numpy as np
-import pytest
 
 
 def matmul_golden(A: np.ndarray, B: np.ndarray) -> np.ndarray:
@@ -117,6 +116,8 @@ def test_expected_cycles():
 
 def test_shape_mismatch():
     """matmul_golden raises on incompatible shapes."""
+    import pytest
+
     A = np.zeros((4, 3), dtype=np.int8)
     B = np.zeros((4, 4), dtype=np.int8)
     with pytest.raises(ValueError, match="inner dims must match"):

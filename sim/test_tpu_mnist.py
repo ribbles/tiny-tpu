@@ -75,6 +75,7 @@ async def test_mnist_hardware_tile(dut):
 
     assert timeout > 0, "❌ TIMEOUT ERROR: TPU Core engine never raised execution done!"
     await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk)
 
     # --- PHASE 3: READ AND PARSE SCORES ---
     raw_bits = str(dut.output_score_register.value)

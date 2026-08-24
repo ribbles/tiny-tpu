@@ -7,6 +7,7 @@ TOPLEVEL_LANG ?= verilog
 VERILOG_SOURCES = ../rtl/pe.sv \
                   ../rtl/controller.sv \
                   ../rtl/systolic_array.sv \
+                  ../rtl/tiny_tpu_top.sv \
                   ../rtl/tpu_uart_receiver.sv \
                   ../rtl/tpu_command_decoder.sv \
                   ../rtl/tpu_uart_transmitter.sv \

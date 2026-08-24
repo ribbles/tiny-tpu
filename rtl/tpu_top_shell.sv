@@ -22,6 +22,7 @@ module tpu_top_shell #(
     
     wire         tx_busy;
     reg          tpu_done_d1;
+    reg          tpu_done_d2;
     reg          tx_trigger;
 
     // --- THE ACCURACY FIX: SECURE HARDWARE RESULT STORAGE ---
@@ -31,15 +32,17 @@ module tpu_top_shell #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             tpu_done_d1            <= 1'b0;
+            tpu_done_d2            <= 1'b0;
             tx_trigger             <= 1'b0;
             silicon_secured_scores <= 128'd0;
         end else begin
             tpu_done_d1 <= tpu_done;
+            tpu_done_d2 <= tpu_done_d1;
             
-            // Rising-edge detection check parameter
-            if (tpu_done && !tpu_done_d1) begin
+            // The full 128-bit row becomes stable two cycles after the core done pulse.
+            if (tpu_done_d1 && !tpu_done_d2) begin
                 tx_trigger             <= 1'b1; // Trigger UART transmission loop
-                silicon_secured_scores <= output_score_register; // Freeze the scores safely!
+                silicon_secured_scores <= flat_c_out;
             end else begin
                 tx_trigger             <= 1'b0;
             end
